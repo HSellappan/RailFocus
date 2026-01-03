@@ -17,6 +17,7 @@ struct RideModeView: View {
     @State private var isPaused = false
     @State private var showEndConfirmation = false
     @State private var progress: Double = 0
+    @State private var currentTag: FocusTag? = .work
 
     var body: some View {
         ZStack {
@@ -95,7 +96,7 @@ struct RideModeView: View {
     private var topHUD: some View {
         HStack {
             // Tag badge
-            if let tag = FocusTag.work {
+            if let tag = currentTag {
                 HStack(spacing: RFSpacing.xxs) {
                     Image(systemName: tag.icon)
                         .font(.system(size: 12))
