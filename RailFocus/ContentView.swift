@@ -8,17 +8,21 @@
 import SwiftUI
 
 struct ContentView: View {
+    @Environment(\.appState) private var appState
+
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
+        Group {
+            if appState.hasCompletedOnboarding {
+                MainTabView()
+            } else {
+                OnboardingView()
+            }
         }
-        .padding()
     }
 }
 
 #Preview {
     ContentView()
+        .environment(\.appState, AppState())
+        .environment(\.theme, Theme.shared)
 }
