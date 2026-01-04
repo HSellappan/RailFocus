@@ -7,6 +7,7 @@
 
 import Foundation
 import CoreLocation
+import SwiftUI
 
 // MARK: - Journey Status
 
@@ -181,6 +182,17 @@ enum FocusTag: String, Codable, CaseIterable, Identifiable {
         case .writing: return "pencil"
         case .admin: return "folder.fill"
         case .personal: return "person.fill"
+        }
+    }
+
+    var color: Color {
+        switch self {
+        case .work: return .rfElectricBlue
+        case .study: return .rfEmerald
+        case .coding: return .rfCrimson
+        case .writing: return .orange
+        case .admin: return .purple
+        case .personal: return .cyan
         }
     }
 }

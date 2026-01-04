@@ -294,42 +294,6 @@ private struct SummaryItem: View {
     }
 }
 
-// MARK: - Focus Tag
-
-enum FocusTag: String, CaseIterable, Identifiable {
-    case work
-    case study
-    case coding
-    case writing
-    case admin
-
-    var id: String { rawValue }
-
-    var displayName: String {
-        rawValue.capitalized
-    }
-
-    var icon: String {
-        switch self {
-        case .work: return "briefcase.fill"
-        case .study: return "book.fill"
-        case .coding: return "chevron.left.forwardslash.chevron.right"
-        case .writing: return "pencil"
-        case .admin: return "folder.fill"
-        }
-    }
-
-    var color: Color {
-        switch self {
-        case .work: return .rfElectricBlue
-        case .study: return .rfEmerald
-        case .coding: return .rfCrimson
-        case .writing: return .orange
-        case .admin: return .purple
-        }
-    }
-}
-
 #Preview {
     HomeView()
         .environment(\.appState, AppState())
