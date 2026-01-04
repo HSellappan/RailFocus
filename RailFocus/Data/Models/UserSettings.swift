@@ -10,7 +10,7 @@ import SwiftUI
 
 // MARK: - Map Style
 
-enum MapStyle: String, Codable, CaseIterable, Identifiable {
+enum RFMapStyle: String, Codable, CaseIterable, Identifiable {
     case monochrome
     case terra
     case standard
@@ -51,7 +51,7 @@ final class UserSettings {
 
     // MARK: - Properties
 
-    var mapStyle: MapStyle {
+    var mapStyle: RFMapStyle {
         didSet { save() }
     }
 
@@ -93,7 +93,7 @@ final class UserSettings {
         let defaults = UserDefaults.standard
 
         if let styleRaw = defaults.string(forKey: Keys.mapStyle),
-           let style = MapStyle(rawValue: styleRaw) {
+           let style = RFMapStyle(rawValue: styleRaw) {
             self.mapStyle = style
         } else {
             self.mapStyle = .satellite

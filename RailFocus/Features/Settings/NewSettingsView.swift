@@ -200,7 +200,7 @@ struct SettingsSection<Content: View>: View {
 
 // MARK: - Settings Row
 
-struct SettingsRow: View {
+private struct SettingsRow: View {
     let icon: String
     let iconColor: Color
     let title: String
@@ -284,7 +284,7 @@ struct MapStyleSettingsView: View {
 
             ScrollView {
                 VStack(spacing: 12) {
-                    ForEach(MapStyle.allCases) { style in
+                    ForEach(RFMapStyle.allCases) { style in
                         Button {
                             appState.settings.mapStyle = style
                         } label: {

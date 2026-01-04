@@ -196,7 +196,7 @@ struct BoardingPassOnboardingPage: View {
 struct MapStyleOnboardingPage: View {
     let onContinue: () -> Void
     @Environment(\.appState) private var appState
-    @State private var selectedStyle: MapStyle = .satellite
+    @State private var selectedStyle: RFMapStyle = .satellite
     @State private var showLabels = false
 
     var body: some View {
@@ -240,8 +240,8 @@ struct MapStyleOnboardingPage: View {
                     GridItem(.flexible(), spacing: 12),
                     GridItem(.flexible(), spacing: 12)
                 ], spacing: 12) {
-                    ForEach(MapStyle.allCases) { style in
-                        MapStyleCard(
+                    ForEach(RFMapStyle.allCases) { style in
+                        RFMapStyleCard(
                             style: style,
                             isSelected: selectedStyle == style
                         ) {
@@ -449,8 +449,8 @@ struct FeatureRow: View {
     }
 }
 
-struct MapStyleCard: View {
-    let style: MapStyle
+struct RFMapStyleCard: View {
+    let style: RFMapStyle
     let isSelected: Bool
     let action: () -> Void
 

@@ -12,6 +12,9 @@ struct NewHomeView: View {
     @Environment(\.appState) private var appState
     @State private var cameraPosition: MapCameraPosition = .automatic
     @State private var showMenu = false
+    @State private var showBookingSheet = false
+    @State private var showRideMode = false
+    @State private var showArrivalScreen = false
 
     var body: some View {
         ZStack {
@@ -49,7 +52,7 @@ struct NewHomeView: View {
                 VStack(alignment: .leading, spacing: 16) {
                     // Start Journey button
                     Button {
-                        appState.showBookingSheet = true
+                        showBookingSheet = true
                     } label: {
                         Text("Start Journey")
                             .font(.system(size: 17, weight: .semibold))
@@ -62,7 +65,7 @@ struct NewHomeView: View {
                     }
 
                     // Side menu
-                    SideMenuView(selectedItem: $appState.selectedMenuItem)
+                    SideMenuView(selectedItem: .constant(appState.selectedMenuItem))
                 }
                 .padding(.horizontal, 24)
                 .padding(.bottom, 40)
@@ -85,16 +88,28 @@ struct NewHomeView: View {
             }
         }
         .preferredColorScheme(.dark)
-        .sheet(isPresented: $appState.showBookingSheet) {
+        .sheet(isPresented: $showBookingSheet) {
             JourneyBookingSheet()
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
         }
-        .fullScreenCover(isPresented: $appState.showRideMode) {
+        .fullScreenCover(isPresented: $showRideMode) {
             RideModeView()
         }
-        .fullScreenCover(isPresented: $appState.showArrivalScreen) {
+        .fullScreenCover(isPresented: $showArrivalScreen) {
             ArrivalView()
+        }
+        .onChange(of: appState.showBookingSheet) { _, newValue in
+            showBookingSheet = newValue
+        }
+        .onChange(of: appState.showRideMode) { _, newValue in
+            showRideMode = newValue
+        }
+        .onChange(of: appState.showArrivalScreen) { _, newValue in
+            showArrivalScreen = newValue
+        }
+        .onChange(of: showBookingSheet) { _, newValue in
+            appState.showBookingSheet = newValue
         }
     }
 }
@@ -104,7 +119,7 @@ struct NewHomeView: View {
 struct GlobeMapView: View {
     let userLatitude: Double
     let userLongitude: Double
-    let mapStyle: MapStyle
+    let mapStyle: RFMapStyle
 
     @State private var cameraPosition: MapCameraPosition = .automatic
 
