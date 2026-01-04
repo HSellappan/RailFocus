@@ -118,10 +118,10 @@ struct TrendsView: View {
             )
 
             StatCard(
-                icon: "airplane",
+                icon: "tram.fill",
                 iconColor: .rfElectricBlue,
                 value: "\(appState.journeyRepository.userProgress.totalJourneysCompleted)",
-                label: "Total Flights"
+                label: "Total Journeys"
             )
 
             StatCard(

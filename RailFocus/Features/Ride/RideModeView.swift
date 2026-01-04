@@ -2,48 +2,57 @@
 //  RideModeView.swift
 //  RailFocus
 //
-//  Full-screen immersive focus session view
+//  Full-screen immersive focus session view with train theme
 //
 
 import SwiftUI
+import MapKit
 
 struct RideModeView: View {
     @Environment(\.appState) private var appState
-    @Environment(\.theme) private var theme
-    @Environment(\.dismiss) private var dismiss
-
-    @State private var timeRemaining: TimeInterval = .minutes(25)
-    @State private var totalDuration: TimeInterval = .minutes(25)
-    @State private var isPaused = false
     @State private var showEndConfirmation = false
-    @State private var progress: Double = 0
-    @State private var currentTag: FocusTag? = .work
+    @State private var railPath: [CLLocationCoordinate2D] = []
+    @State private var currentPosition: CLLocationCoordinate2D?
+    @State private var cameraPosition: MapCameraPosition = .automatic
 
     var body: some View {
         ZStack {
-            // Background gradient (placeholder for map)
-            backgroundView
+            // Map background with rail path
+            railMapView
+                .ignoresSafeArea()
+
+            // Stars overlay
+            StarsBackgroundView()
+                .opacity(0.2)
+                .allowsHitTesting(false)
 
             // Content overlay
             VStack(spacing: 0) {
-                // Top HUD
-                topHUD
+                // Top bar
+                topBar
 
                 Spacer()
 
-                // Train progress indicator
-                trainProgressView
+                // Center time display
+                centerTimeDisplay
 
                 Spacer()
 
                 // Bottom controls
-                bottomControlCard
+                bottomControls
             }
         }
         .preferredColorScheme(.dark)
-        .statusBarHidden()
         .onAppear {
-            startTimer()
+            setupRailPath()
+        }
+        .onChange(of: appState.timerService.progress) { _, newValue in
+            updateTrainPosition(progress: newValue)
+        }
+        .onChange(of: appState.timerService.state) { _, newState in
+            if newState == .completed {
+                appState.completeJourney()
+            }
         }
         .confirmationDialog(
             "End Journey Early?",
@@ -51,183 +60,183 @@ struct RideModeView: View {
             titleVisibility: .visible
         ) {
             Button("End Journey", role: .destructive) {
-                endJourney()
+                appState.interruptJourney()
             }
-            Button("Continue Riding", role: .cancel) {}
+            Button("Continue", role: .cancel) {}
         } message: {
             Text("Your progress will be saved, but this journey will be marked as interrupted.")
         }
     }
 
-    // MARK: - Background
+    // MARK: - Rail Map
 
-    private var backgroundView: some View {
-        ZStack {
-            // Dark gradient background
-            LinearGradient(
-                colors: [
-                    Color(hex: "0A1628"),
-                    Color(hex: "1A2F4A"),
-                    Color(hex: "0A1628")
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
+    private var railMapView: some View {
+        Map(position: $cameraPosition) {
+            // Rail path line
+            if railPath.count >= 2 {
+                MapPolyline(coordinates: railPath)
+                    .stroke(Color.white.opacity(0.4), lineWidth: 2)
+            }
 
-            // Subtle grid pattern (track visualization)
-            GeometryReader { geometry in
-                Path { path in
-                    let spacing: CGFloat = 40
-                    // Horizontal lines
-                    for y in stride(from: 0, to: geometry.size.height, by: spacing) {
-                        path.move(to: CGPoint(x: 0, y: y))
-                        path.addLine(to: CGPoint(x: geometry.size.width, y: y))
+            // Origin marker
+            if let journey = appState.activeJourney {
+                Annotation("", coordinate: journey.originStation.locationCoordinate) {
+                    Circle()
+                        .fill(Color.white)
+                        .frame(width: 10, height: 10)
+                }
+
+                // Destination marker
+                Annotation("", coordinate: journey.destinationStation.locationCoordinate) {
+                    Circle()
+                        .stroke(Color.white, lineWidth: 2)
+                        .frame(width: 10, height: 10)
+                }
+
+                // Train marker
+                if let position = currentPosition {
+                    Annotation("", coordinate: position) {
+                        Image(systemName: "tram.fill")
+                            .font(.system(size: 24, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .rotationEffect(.degrees(calculateHeading()))
                     }
                 }
-                .stroke(Color.white.opacity(0.03), lineWidth: 1)
             }
-            .ignoresSafeArea()
         }
+        .mapStyle(.imagery(elevation: .realistic))
     }
 
-    // MARK: - Top HUD
+    // MARK: - Top Bar
 
-    private var topHUD: some View {
+    private var topBar: some View {
         HStack {
-            // Tag badge
-            if let tag = currentTag {
-                HStack(spacing: RFSpacing.xxs) {
-                    Image(systemName: tag.icon)
-                        .font(.system(size: 12))
-                    Text(tag.displayName)
-                        .font(RFTypography.caption1.font)
+            // Route info
+            if let journey = appState.activeJourney {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(journey.routeCode)
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundStyle(.white)
+
+                    HStack(spacing: 8) {
+                        Text(journey.originStation.railLine)
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(Color.white.opacity(0.6))
+
+                        if let tag = journey.tag {
+                            HStack(spacing: 4) {
+                                Image(systemName: tag.icon)
+                                    .font(.system(size: 10))
+                                Text(tag.displayName)
+                                    .font(.system(size: 12))
+                            }
+                            .foregroundStyle(Color.white.opacity(0.6))
+                        }
+                    }
                 }
-                .padding(.horizontal, RFSpacing.sm)
-                .padding(.vertical, RFSpacing.xxs)
-                .background(
-                    Capsule()
-                        .fill(Color.white.opacity(0.15))
-                )
-                .foregroundStyle(.white.opacity(0.8))
             }
 
             Spacer()
 
-            // Route name
-            Text("Tokyo → Osaka")
-                .font(RFTypography.subheadline.font)
-                .foregroundStyle(.white.opacity(0.6))
+            // Status badge
+            HStack(spacing: 6) {
+                Circle()
+                    .fill(statusColor)
+                    .frame(width: 8, height: 8)
+                Text(statusText)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(.white)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(
+                Capsule()
+                    .fill(Color.white.opacity(0.15))
+            )
         }
-        .padding(.horizontal, RFSpacing.lg)
-        .padding(.top, RFSpacing.xl)
+        .padding(.horizontal, 24)
+        .padding(.top, 60)
     }
 
-    // MARK: - Train Progress
+    // MARK: - Center Time Display
 
-    private var trainProgressView: some View {
-        VStack(spacing: RFSpacing.xl) {
-            // Large time display
-            VStack(spacing: RFSpacing.xs) {
-                Text(timeRemaining.countdownString)
-                    .font(.system(size: 72, weight: .light, design: .monospaced))
-                    .foregroundStyle(.white)
+    private var centerTimeDisplay: some View {
+        VStack(spacing: 8) {
+            Text(appState.timerService.formattedTimeRemaining)
+                .font(.system(size: 72, weight: .light, design: .monospaced))
+                .foregroundStyle(.white)
 
-                Text("remaining")
-                    .font(RFTypography.subheadline.font)
-                    .foregroundStyle(.white.opacity(0.5))
-            }
+            Text("remaining")
+                .font(.system(size: 16))
+                .foregroundStyle(Color.white.opacity(0.5))
 
-            // Progress track
+            // Progress bar
             GeometryReader { geometry in
                 ZStack(alignment: .leading) {
-                    // Track background
-                    RoundedRectangle(cornerRadius: 2)
+                    Capsule()
                         .fill(Color.white.opacity(0.2))
                         .frame(height: 4)
 
-                    // Progress fill
-                    RoundedRectangle(cornerRadius: 2)
-                        .fill(theme.accentStyle.color)
-                        .frame(width: geometry.size.width * progress, height: 4)
-                        .animation(RFAnimation.standard, value: progress)
-
-                    // Train marker
-                    Image(systemName: "tram.fill")
-                        .font(.system(size: 24, weight: .semibold))
-                        .foregroundStyle(theme.accentStyle.color)
-                        .offset(x: (geometry.size.width - 24) * progress, y: -16)
-                        .animation(RFAnimation.smoothSpring, value: progress)
-
-                    // Origin marker
-                    Circle()
-                        .fill(theme.accentStyle.color)
-                        .frame(width: 12, height: 12)
-
-                    // Destination marker
-                    Circle()
-                        .stroke(Color.white.opacity(0.5), lineWidth: 2)
-                        .frame(width: 12, height: 12)
-                        .position(x: geometry.size.width, y: 2)
+                    Capsule()
+                        .fill(Color.white)
+                        .frame(width: geometry.size.width * appState.timerService.progress, height: 4)
+                        .animation(.linear(duration: 1), value: appState.timerService.progress)
                 }
             }
-            .frame(height: 40)
-            .padding(.horizontal, RFSpacing.xl)
-
-            // Station labels
-            HStack {
-                Text("Tokyo")
-                    .font(RFTypography.caption1.font)
-                    .foregroundStyle(.white.opacity(0.7))
-
-                Spacer()
-
-                Text("Osaka")
-                    .font(RFTypography.caption1.font)
-                    .foregroundStyle(.white.opacity(0.5))
-            }
-            .padding(.horizontal, RFSpacing.xl)
+            .frame(height: 4)
+            .frame(maxWidth: 200)
+            .padding(.top, 16)
         }
     }
 
-    // MARK: - Bottom Control Card
+    // MARK: - Bottom Controls
 
-    private var bottomControlCard: some View {
-        VStack(spacing: RFSpacing.lg) {
-            // Speed indicator (thematic)
-            HStack(spacing: RFSpacing.lg) {
-                StatIndicator(
-                    value: "285",
-                    unit: "km/h",
-                    label: "Speed"
-                )
+    private var bottomControls: some View {
+        VStack(spacing: 16) {
+            // Stats row
+            if let journey = appState.activeJourney {
+                HStack(spacing: 32) {
+                    StatItem(
+                        value: String(format: "%.0f", journey.distanceKm * (1 - appState.timerService.progress)),
+                        unit: "km",
+                        label: "Remaining"
+                    )
 
-                StatIndicator(
-                    value: formattedDistance,
-                    unit: "km",
-                    label: "Remaining"
-                )
+                    StatItem(
+                        value: "\(journey.currentSpeed)",
+                        unit: "km/h",
+                        label: "Speed"
+                    )
+
+                    StatItem(
+                        value: journey.trainName.components(separatedBy: " ").first ?? "Express",
+                        unit: "",
+                        label: "Train"
+                    )
+                }
             }
 
             // Control buttons
-            HStack(spacing: RFSpacing.md) {
+            HStack(spacing: 16) {
                 // Pause/Resume button
                 Button {
-                    withAnimation(RFAnimation.quick) {
-                        isPaused.toggle()
+                    if appState.timerService.state == .running {
+                        appState.timerService.pause()
+                    } else {
+                        appState.timerService.resume()
                     }
                 } label: {
-                    HStack(spacing: RFSpacing.xs) {
-                        Image(systemName: isPaused ? "play.fill" : "pause.fill")
-                            .font(.system(size: 18, weight: .semibold))
-                        Text(isPaused ? "Resume" : "Pause")
-                            .font(RFTypography.headline.font)
+                    HStack(spacing: 8) {
+                        Image(systemName: appState.timerService.state == .running ? "pause.fill" : "play.fill")
+                            .font(.system(size: 16, weight: .semibold))
+                        Text(appState.timerService.state == .running ? "Pause" : "Resume")
+                            .font(.system(size: 16, weight: .semibold))
                     }
-                    .frame(maxWidth: .infinity)
-                    .frame(height: RFSize.buttonHeight)
                     .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 50)
                     .background(
-                        RoundedRectangle(cornerRadius: RFCornerRadius.standard)
+                        Capsule()
                             .fill(Color.white.opacity(0.15))
                     )
                 }
@@ -236,25 +245,24 @@ struct RideModeView: View {
                 Button {
                     showEndConfirmation = true
                 } label: {
-                    HStack(spacing: RFSpacing.xs) {
+                    HStack(spacing: 8) {
                         Image(systemName: "xmark")
-                            .font(.system(size: 18, weight: .semibold))
+                            .font(.system(size: 16, weight: .semibold))
                         Text("End")
-                            .font(RFTypography.headline.font)
+                            .font(.system(size: 16, weight: .semibold))
                     }
-                    .frame(width: 100)
-                    .frame(height: RFSize.buttonHeight)
                     .foregroundStyle(.white)
+                    .frame(width: 100, height: 50)
                     .background(
-                        RoundedRectangle(cornerRadius: RFCornerRadius.standard)
+                        Capsule()
                             .stroke(Color.white.opacity(0.3), lineWidth: 1)
                     )
                 }
             }
         }
-        .padding(RFSpacing.lg)
+        .padding(24)
         .background(
-            RoundedRectangle(cornerRadius: RFCornerRadius.xl)
+            RoundedRectangle(cornerRadius: 24)
                 .fill(.ultraThinMaterial)
                 .ignoresSafeArea(edges: .bottom)
         )
@@ -262,68 +270,124 @@ struct RideModeView: View {
 
     // MARK: - Helpers
 
-    private var formattedDistance: String {
-        let totalDistance = 515.0 // km Tokyo to Osaka
-        let remaining = totalDistance * (1 - progress)
-        return String(format: "%.0f", remaining)
-    }
-
-    // MARK: - Timer Logic
-
-    private func startTimer() {
-        // Timer will be implemented properly in Phase 2
-        // For now, just update progress for preview
-        Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { timer in
-            guard !isPaused else { return }
-
-            if timeRemaining > 0 {
-                timeRemaining -= 1
-                progress = 1 - (timeRemaining / totalDuration)
-            } else {
-                timer.invalidate()
-                completeJourney()
-            }
+    private var statusColor: Color {
+        switch appState.timerService.state {
+        case .running: return .rfSuccess
+        case .paused: return .rfWarning
+        default: return .white
         }
     }
 
-    private func completeJourney() {
-        // Will be implemented in Phase 6
-        appState.endJourney()
+    private var statusText: String {
+        switch appState.timerService.state {
+        case .running: return "EN ROUTE"
+        case .paused: return "PAUSED"
+        default: return "READY"
+        }
     }
 
-    private func endJourney() {
-        appState.endJourney()
+    private func setupRailPath() {
+        guard let journey = appState.activeJourney else { return }
+
+        let origin = journey.originStation.locationCoordinate
+        let destination = journey.destinationStation.locationCoordinate
+
+        // Create path between origin and destination
+        railPath = createRailPath(from: origin, to: destination, segments: 50)
+        currentPosition = origin
+
+        // Set camera to show full path
+        let centerLat = (origin.latitude + destination.latitude) / 2
+        let centerLon = (origin.longitude + destination.longitude) / 2
+
+        cameraPosition = .camera(
+            MapCamera(
+                centerCoordinate: CLLocationCoordinate2D(latitude: centerLat, longitude: centerLon),
+                distance: 15000000
+            )
+        )
+    }
+
+    private func updateTrainPosition(progress: Double) {
+        guard railPath.count > 1 else { return }
+
+        let index = Int(Double(railPath.count - 1) * progress)
+        let clampedIndex = min(max(index, 0), railPath.count - 1)
+        currentPosition = railPath[clampedIndex]
+    }
+
+    private func calculateHeading() -> Double {
+        guard railPath.count > 1, let current = currentPosition else { return 0 }
+
+        let index = railPath.firstIndex { coord in
+            abs(coord.latitude - current.latitude) < 0.01 &&
+            abs(coord.longitude - current.longitude) < 0.01
+        } ?? 0
+
+        let nextIndex = min(index + 1, railPath.count - 1)
+        let next = railPath[nextIndex]
+
+        let deltaLon = next.longitude - current.longitude
+        let deltaLat = next.latitude - current.latitude
+
+        return atan2(deltaLon, deltaLat) * 180 / .pi
+    }
+
+    private func createRailPath(
+        from start: CLLocationCoordinate2D,
+        to end: CLLocationCoordinate2D,
+        segments: Int
+    ) -> [CLLocationCoordinate2D] {
+        var path: [CLLocationCoordinate2D] = []
+
+        for i in 0...segments {
+            let fraction = Double(i) / Double(segments)
+            let lat = start.latitude + (end.latitude - start.latitude) * fraction
+            let lon = start.longitude + (end.longitude - start.longitude) * fraction
+            path.append(CLLocationCoordinate2D(latitude: lat, longitude: lon))
+        }
+
+        return path
     }
 }
 
-// MARK: - Stat Indicator
+// MARK: - Stat Item
 
-private struct StatIndicator: View {
+private struct StatItem: View {
     let value: String
     let unit: String
     let label: String
 
     var body: some View {
-        VStack(spacing: RFSpacing.xxs) {
+        VStack(spacing: 2) {
             HStack(alignment: .firstTextBaseline, spacing: 2) {
                 Text(value)
-                    .font(.system(size: 28, weight: .semibold, design: .monospaced))
+                    .font(.system(size: 20, weight: .semibold, design: .monospaced))
                     .foregroundStyle(.white)
-
-                Text(unit)
-                    .font(RFTypography.caption1.font)
-                    .foregroundStyle(.white.opacity(0.6))
+                if !unit.isEmpty {
+                    Text(unit)
+                        .font(.system(size: 12))
+                        .foregroundStyle(Color.white.opacity(0.6))
+                }
             }
-
             Text(label)
-                .font(RFTypography.caption2.font)
-                .foregroundStyle(.white.opacity(0.5))
+                .font(.system(size: 11))
+                .foregroundStyle(Color.white.opacity(0.5))
         }
     }
 }
 
+// MARK: - Preview
+
 #Preview {
     RideModeView()
-        .environment(\.appState, AppState())
-        .environment(\.theme, Theme.shared)
+        .environment(\.appState, {
+            let state = AppState()
+            state.activeJourney = Journey(
+                origin: .tokyo,
+                destination: .osaka,
+                duration: 1500
+            )
+            return state
+        }())
 }

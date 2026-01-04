@@ -26,8 +26,8 @@ final class AppState {
     /// Current journey if active
     var activeJourney: Journey?
 
-    /// Show the flight/ride mode full screen cover
-    var showFlightMode: Bool = false
+    /// Show the ride mode full screen cover
+    var showRideMode: Bool = false
 
     /// Show journey booking sheet
     var showBookingSheet: Bool = false
@@ -50,7 +50,7 @@ final class AppState {
         activeJourney = newJourney
         journeyRepository.add(newJourney)
         isJourneyActive = true
-        showFlightMode = true
+        showRideMode = true
         timerService.start(duration: journey.scheduledDuration)
     }
 
@@ -59,7 +59,7 @@ final class AppState {
         journey.complete()
         journeyRepository.update(journey)
         timerService.reset()
-        showFlightMode = false
+        showRideMode = false
         showArrivalScreen = true
         isJourneyActive = false
         activeJourney = nil
@@ -70,7 +70,7 @@ final class AppState {
         journey.interrupt()
         journeyRepository.update(journey)
         timerService.reset()
-        showFlightMode = false
+        showRideMode = false
         isJourneyActive = false
         activeJourney = nil
     }
@@ -108,7 +108,7 @@ enum MenuItem: String, CaseIterable, Identifiable {
     var icon: String {
         switch self {
         case .home: return "globe.americas.fill"
-        case .inProgress: return "airplane"
+        case .inProgress: return "tram.fill"
         case .history: return "clock.fill"
         case .trends: return "chart.line.uptrend.xyaxis"
         case .settings: return "gearshape.fill"

@@ -2,7 +2,7 @@
 //  Journey.swift
 //  RailFocus
 //
-//  Core journey/flight data model
+//  Core train journey data model
 //
 
 import Foundation
@@ -16,6 +16,16 @@ enum JourneyStatus: String, Codable {
     case completed
     case interrupted
     case cancelled
+
+    var displayText: String {
+        switch self {
+        case .scheduled: return "SCHEDULED"
+        case .inProgress: return "EN ROUTE"
+        case .completed: return "ARRIVED"
+        case .interrupted: return "INTERRUPTED"
+        case .cancelled: return "CANCELLED"
+        }
+    }
 }
 
 // MARK: - Journey Model
@@ -31,7 +41,8 @@ struct Journey: Identifiable, Codable {
     var completedAt: Date?
     var tag: FocusTag?
     var notes: String?
-    var seatNumber: String
+    var carNumber: String
+    var trainName: String
 
     init(
         id: UUID = UUID(),
@@ -46,7 +57,8 @@ struct Journey: Identifiable, Codable {
         self.scheduledDuration = duration
         self.status = .scheduled
         self.tag = tag
-        self.seatNumber = Journey.generateSeatNumber()
+        self.carNumber = Journey.generateCarNumber()
+        self.trainName = Journey.generateTrainName(from: origin)
     }
 
     // MARK: - Computed Properties
@@ -92,10 +104,33 @@ struct Journey: Identifiable, Codable {
 
     // MARK: - Helpers
 
-    private static func generateSeatNumber() -> String {
-        let row = Int.random(in: 1...30)
-        let seat = ["A", "B", "C", "D", "E", "F"].randomElement() ?? "A"
-        return "\(row)\(seat)"
+    private static func generateCarNumber() -> String {
+        let car = Int.random(in: 1...12)
+        let seat = Int.random(in: 1...80)
+        return "Car \(car), Seat \(seat)"
+    }
+
+    private static func generateTrainName(from station: Station) -> String {
+        let trainNumbers = [
+            "Shinkansen": ["Nozomi", "Hikari", "Kodama"],
+            "TGV": ["TGV inOui", "TGV Lyria", "Ouigo"],
+            "ICE": ["ICE", "ICE Sprinter"],
+            "Eurostar": ["Eurostar"],
+            "AVE": ["AVE", "Avlo"],
+            "CRH": ["Fuxing", "Harmony"]
+        ]
+
+        let names = trainNumbers[station.railLine] ?? ["Express"]
+        let name = names.randomElement() ?? "Express"
+        let number = Int.random(in: 100...999)
+        return "\(name) \(number)"
+    }
+
+    /// Estimated speed based on high-speed rail (thematic, not literal)
+    var currentSpeed: Int {
+        guard status == .inProgress else { return 0 }
+        // High-speed trains typically run 250-350 km/h
+        return Int.random(in: 280...320)
     }
 
     // MARK: - Actions

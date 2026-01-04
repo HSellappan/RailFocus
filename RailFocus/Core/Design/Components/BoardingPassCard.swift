@@ -1,13 +1,13 @@
 //
-//  BoardingPassCard.swift
+//  TrainTicketCard.swift
 //  RailFocus
 //
-//  Boarding pass style card component
+//  Train ticket style card component
 //
 
 import SwiftUI
 
-struct BoardingPassCard: View {
+struct TrainTicketCard: View {
     let origin: String
     let originCity: String
     let destination: String
@@ -16,27 +16,29 @@ struct BoardingPassCard: View {
     let date: String
     var departureTime: String = "Now"
     var arrivalTime: String?
-    var seat: String?
+    var carSeat: String?
     var distance: String?
-    var isLanded: Bool = false
+    var trainName: String?
+    var railLine: String?
+    var hasArrived: Bool = false
     var showBarcode: Bool = true
 
     var body: some View {
         VStack(spacing: 0) {
             // Main card content
             VStack(spacing: 16) {
-                // Header with date and status
+                // Header with rail line and status
                 HStack {
-                    if !showBarcode {
-                        Text(date)
-                            .font(.system(size: 11))
+                    if let railLine = railLine {
+                        Text(railLine)
+                            .font(.system(size: 11, weight: .medium))
                             .foregroundStyle(Color.black.opacity(0.5))
                     }
 
                     Spacer()
 
-                    if isLanded {
-                        Text("LANDED")
+                    if hasArrived {
+                        Text("ARRIVED")
                             .font(.system(size: 10, weight: .bold))
                             .foregroundStyle(.rfSuccess)
                             .padding(.horizontal, 8)
@@ -62,12 +64,11 @@ struct BoardingPassCard: View {
 
                     Spacer()
 
-                    // Flight icon and duration
+                    // Train icon and duration
                     VStack(spacing: 4) {
-                        Image(systemName: "airplane")
-                            .font(.system(size: 14))
+                        Image(systemName: "tram.fill")
+                            .font(.system(size: 16))
                             .foregroundStyle(Color.black.opacity(0.4))
-                            .rotationEffect(.degrees(90))
                         Text(duration)
                             .font(.system(size: 12))
                             .foregroundStyle(Color.black.opacity(0.5))
@@ -89,36 +90,49 @@ struct BoardingPassCard: View {
                 // Details row
                 if showBarcode {
                     HStack {
-                        // Seat
-                        if let seat = seat {
-                            DetailColumn(label: "Seat", value: seat)
+                        // Car/Seat
+                        if let carSeat = carSeat {
+                            TicketDetailColumn(label: "Car/Seat", value: carSeat)
                         }
 
                         Spacer()
 
                         // Distance
                         if let distance = distance {
-                            DetailColumn(label: "Distance", value: distance)
+                            TicketDetailColumn(label: "Distance", value: distance)
                         }
 
                         Spacer()
 
-                        // Boarding/Departure
-                        DetailColumn(label: "Boarding", value: departureTime)
+                        // Departure
+                        TicketDetailColumn(label: "Departure", value: departureTime)
 
                         Spacer()
 
                         // Date
-                        DetailColumn(label: "Date", value: date)
+                        TicketDetailColumn(label: "Date", value: date)
                     }
                 } else {
                     // Simplified details for background card
                     HStack {
-                        DetailColumn(label: "Departure", value: departureTime)
+                        TicketDetailColumn(label: "Departure", value: departureTime)
                         Spacer()
                         if let arrivalTime = arrivalTime {
-                            DetailColumn(label: "Arrival", value: arrivalTime)
+                            TicketDetailColumn(label: "Arrival", value: arrivalTime)
                         }
+                    }
+                }
+
+                // Train name
+                if let trainName = trainName {
+                    HStack {
+                        Image(systemName: "train.side.front.car")
+                            .font(.system(size: 12))
+                            .foregroundStyle(Color.black.opacity(0.4))
+                        Text(trainName)
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(Color.black.opacity(0.6))
+                        Spacer()
                     }
                 }
             }
@@ -175,9 +189,9 @@ struct BoardingPassCard: View {
     }
 }
 
-// MARK: - Detail Column
+// MARK: - Ticket Detail Column
 
-private struct DetailColumn: View {
+private struct TicketDetailColumn: View {
     let label: String
     let value: String
 
@@ -193,9 +207,9 @@ private struct DetailColumn: View {
     }
 }
 
-// MARK: - Compact Boarding Pass (for lists)
+// MARK: - Compact Train Ticket (for lists)
 
-struct CompactBoardingPass: View {
+struct CompactTrainTicket: View {
     let journey: Journey
 
     var body: some View {
@@ -218,15 +232,9 @@ struct CompactBoardingPass: View {
                     .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(.white)
 
-                if journey.status == .completed {
-                    Text("LANDED")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(.rfSuccess)
-                } else if journey.status == .inProgress {
-                    Text("IN FLIGHT")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(.rfElectricBlue)
-                }
+                Text(journey.status.displayText)
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(statusColor)
             }
         }
         .padding(16)
@@ -235,24 +243,39 @@ struct CompactBoardingPass: View {
                 .fill(Color.white.opacity(0.08))
         )
     }
+
+    private var statusColor: Color {
+        switch journey.status {
+        case .completed: return .rfSuccess
+        case .inProgress: return .rfElectricBlue
+        case .interrupted: return .rfWarning
+        default: return .white.opacity(0.5)
+        }
+    }
 }
+
+// MARK: - Legacy alias for compatibility
+typealias BoardingPassCard = TrainTicketCard
+typealias CompactBoardingPass = CompactTrainTicket
 
 // MARK: - Preview
 
-#Preview("Boarding Pass") {
+#Preview("Train Ticket") {
     ZStack {
         Color.black.ignoresSafeArea()
 
         VStack(spacing: 20) {
-            BoardingPassCard(
-                origin: "LHR",
-                originCity: "London",
-                destination: "CDG",
-                destinationCity: "Paris",
-                duration: "42m",
+            TrainTicketCard(
+                origin: "TYO",
+                originCity: "Tokyo",
+                destination: "OSA",
+                destinationCity: "Osaka",
+                duration: "2h 15m",
                 date: "2026/01/03",
-                seat: "21A",
-                distance: "216 mi",
+                carSeat: "Car 5, Seat 12",
+                distance: "515 km",
+                trainName: "Nozomi 225",
+                railLine: "Shinkansen",
                 showBarcode: true
             )
             .padding()

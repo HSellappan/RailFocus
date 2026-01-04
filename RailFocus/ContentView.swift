@@ -68,9 +68,9 @@ struct InProgressView: View {
                             .padding(.horizontal, 24)
 
                         Button {
-                            appState.showFlightMode = true
+                            appState.showRideMode = true
                         } label: {
-                            Text("Return to Flight")
+                            Text("Return to Ride")
                                 .font(.system(size: 17, weight: .semibold))
                                 .foregroundStyle(.black)
                                 .frame(maxWidth: .infinity)
@@ -85,7 +85,7 @@ struct InProgressView: View {
                 } else {
                     // Empty state
                     VStack(spacing: 16) {
-                        Image(systemName: "airplane.circle")
+                        Image(systemName: "tram.circle")
                             .font(.system(size: 48))
                             .foregroundStyle(Color.white.opacity(0.3))
 

@@ -102,7 +102,7 @@ struct WelcomeOnboardingPage: View {
     }
 }
 
-// MARK: - Page 2: Boarding Pass
+// MARK: - Page 2: Train Ticket
 
 struct BoardingPassOnboardingPage: View {
     let onContinue: () -> Void
@@ -114,38 +114,39 @@ struct BoardingPassOnboardingPage: View {
             VStack(spacing: 0) {
                 Spacer()
 
-                // Boarding passes stack
+                // Train tickets stack
                 ZStack {
-                    // Background pass (tilted)
-                    BoardingPassCard(
-                        origin: "LHR",
-                        originCity: "London",
-                        destination: "CDG",
-                        destinationCity: "Paris",
-                        duration: "42m",
+                    // Background ticket (tilted)
+                    TrainTicketCard(
+                        origin: "TYO",
+                        originCity: "Tokyo",
+                        destination: "OSA",
+                        destinationCity: "Osaka",
+                        duration: "2h 15m",
                         date: "January 3, 2026",
                         departureTime: "5:02P",
-                        arrivalTime: "5:44 PM",
-                        isLanded: false,
+                        arrivalTime: "7:17 PM",
+                        hasArrived: false,
                         showBarcode: false
                     )
                     .rotationEffect(.degrees(-8))
                     .offset(x: -20, y: -30)
                     .opacity(0.7)
 
-                    // Front pass
-                    BoardingPassCard(
-                        origin: "LHR",
-                        originCity: "London",
-                        destination: "CDG",
-                        destinationCity: "Paris",
-                        duration: "42m",
+                    // Front ticket
+                    TrainTicketCard(
+                        origin: "TYO",
+                        originCity: "Tokyo",
+                        destination: "OSA",
+                        destinationCity: "Osaka",
+                        duration: "2h 15m",
                         date: "2026/01/03",
                         departureTime: "Now",
-                        arrivalTime: nil,
-                        seat: "21A",
-                        distance: "216 mi",
-                        isLanded: false,
+                        carSeat: "Car 5, Seat 12",
+                        distance: "515 km",
+                        trainName: "Nozomi 225",
+                        railLine: "Shinkansen",
+                        hasArrived: false,
                         showBarcode: true
                     )
                 }
@@ -156,15 +157,15 @@ struct BoardingPassOnboardingPage: View {
                 // Features list
                 VStack(spacing: 24) {
                     FeatureRow(
-                        icon: "calendar.badge.clock",
-                        title: "Focus Boarding Pass",
-                        description: "Every flight is a journey of deep focus, from takeoff to touchdown."
+                        icon: "tram.fill",
+                        title: "Focus Ticket",
+                        description: "Every ride is a journey of deep focus, from departure to arrival."
                     )
 
                     FeatureRow(
                         icon: "clock.arrow.circlepath",
-                        title: "Focus History",
-                        description: "Every flight marks a milestone in your focus journey."
+                        title: "Journey History",
+                        description: "Every train ride marks a milestone in your focus journey."
                     )
                 }
                 .padding(.horizontal, 40)
@@ -224,7 +225,7 @@ struct MapStyleOnboardingPage: View {
                             .font(.system(size: 24))
                     }
 
-                    Text("Your chosen map will appear by default on the home and flight screens.")
+                    Text("Your chosen map will appear by default on the home and ride screens.")
                         .font(.system(size: 14))
                         .foregroundStyle(Color.white.opacity(0.6))
                         .multilineTextAlignment(.center)

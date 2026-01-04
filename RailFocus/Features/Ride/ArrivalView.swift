@@ -38,7 +38,7 @@ struct ArrivalView: View {
 
                 // Arrival text
                 VStack(spacing: 8) {
-                    Text("LANDED")
+                    Text("ARRIVED")
                         .font(.system(size: 14, weight: .bold))
                         .foregroundStyle(.rfSuccess)
                         .tracking(2)

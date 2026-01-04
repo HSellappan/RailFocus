@@ -90,8 +90,8 @@ struct NewHomeView: View {
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
         }
-        .fullScreenCover(isPresented: $appState.showFlightMode) {
-            FlightModeView()
+        .fullScreenCover(isPresented: $appState.showRideMode) {
+            RideModeView()
         }
         .fullScreenCover(isPresented: $appState.showArrivalScreen) {
             ArrivalView()
@@ -190,8 +190,8 @@ struct JourneyBookingSheet: View {
     @Environment(\.appState) private var appState
     @Environment(\.dismiss) private var dismiss
 
-    @State private var selectedOrigin: Station = .chicago
-    @State private var selectedDestination: Station = .newYork
+    @State private var selectedOrigin: Station = .tokyo
+    @State private var selectedDestination: Station = .osaka
     @State private var selectedDuration: Int = 25
     @State private var selectedTag: FocusTag?
 

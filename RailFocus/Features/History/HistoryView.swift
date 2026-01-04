@@ -42,7 +42,7 @@ struct HistoryView: View {
 
     private var emptyState: some View {
         VStack(spacing: 16) {
-            Image(systemName: "airplane")
+            Image(systemName: "tram")
                 .font(.system(size: 48))
                 .foregroundStyle(Color.white.opacity(0.3))
 
@@ -110,10 +110,9 @@ struct JourneyHistoryRow: View {
                     .fill(statusColor.opacity(0.15))
                     .frame(width: 44, height: 44)
 
-                Image(systemName: "airplane")
+                Image(systemName: "tram.fill")
                     .font(.system(size: 18))
                     .foregroundStyle(statusColor)
-                    .rotationEffect(.degrees(45))
             }
 
             // Journey details
@@ -148,7 +147,7 @@ struct JourneyHistoryRow: View {
                     .font(.system(size: 13))
                     .foregroundStyle(Color.white.opacity(0.5))
 
-                Text(journey.status == .completed ? "LANDED" : "INTERRUPTED")
+                Text(journey.status == .completed ? "ARRIVED" : "INTERRUPTED")
                     .font(.system(size: 10, weight: .bold))
                     .foregroundStyle(statusColor)
             }

@@ -2,7 +2,7 @@
 //  Station.swift
 //  RailFocus
 //
-//  Station/Airport data model
+//  Train station data model for high-speed rail lines
 //
 
 import Foundation
@@ -18,6 +18,7 @@ struct Station: Identifiable, Codable, Hashable {
     let country: String
     let coordinate: Coordinate
     let timezone: String
+    let railLine: String
 
     init(
         id: UUID = UUID(),
@@ -27,7 +28,8 @@ struct Station: Identifiable, Codable, Hashable {
         country: String,
         latitude: Double,
         longitude: Double,
-        timezone: String = "UTC"
+        timezone: String = "UTC",
+        railLine: String = ""
     ) {
         self.id = id
         self.name = name
@@ -36,6 +38,7 @@ struct Station: Identifiable, Codable, Hashable {
         self.country = country
         self.coordinate = Coordinate(latitude: latitude, longitude: longitude)
         self.timezone = timezone
+        self.railLine = railLine
     }
 
     var locationCoordinate: CLLocationCoordinate2D {
@@ -53,122 +56,170 @@ struct Coordinate: Codable, Hashable {
     let longitude: Double
 }
 
-// MARK: - Sample Stations
+// MARK: - Sample Train Stations (Real High-Speed Rail)
 
 extension Station {
     static let sampleStations: [Station] = [
-        // Europe
+        // Japan - Shinkansen (Tokaido Line)
         Station(
-            name: "London Heathrow",
-            code: "LHR",
-            city: "London",
-            country: "United Kingdom",
-            latitude: 51.4700,
-            longitude: -0.4543,
-            timezone: "Europe/London"
-        ),
-        Station(
-            name: "Paris Charles de Gaulle",
-            code: "CDG",
-            city: "Paris",
-            country: "France",
-            latitude: 49.0097,
-            longitude: 2.5479,
-            timezone: "Europe/Paris"
-        ),
-        Station(
-            name: "Frankfurt Airport",
-            code: "FRA",
-            city: "Frankfurt",
-            country: "Germany",
-            latitude: 50.0379,
-            longitude: 8.5622,
-            timezone: "Europe/Berlin"
-        ),
-        Station(
-            name: "Amsterdam Schiphol",
-            code: "AMS",
-            city: "Amsterdam",
-            country: "Netherlands",
-            latitude: 52.3105,
-            longitude: 4.7683,
-            timezone: "Europe/Amsterdam"
-        ),
-
-        // North America
-        Station(
-            name: "Chicago O'Hare",
-            code: "ORD",
-            city: "Chicago",
-            country: "United States",
-            latitude: 41.9742,
-            longitude: -87.9073,
-            timezone: "America/Chicago"
-        ),
-        Station(
-            name: "New York JFK",
-            code: "JFK",
-            city: "New York",
-            country: "United States",
-            latitude: 40.6413,
-            longitude: -73.7781,
-            timezone: "America/New_York"
-        ),
-        Station(
-            name: "Los Angeles International",
-            code: "LAX",
-            city: "Los Angeles",
-            country: "United States",
-            latitude: 33.9416,
-            longitude: -118.4085,
-            timezone: "America/Los_Angeles"
-        ),
-        Station(
-            name: "San Francisco International",
-            code: "SFO",
-            city: "San Francisco",
-            country: "United States",
-            latitude: 37.6213,
-            longitude: -122.3790,
-            timezone: "America/Los_Angeles"
-        ),
-
-        // Asia
-        Station(
-            name: "Tokyo Narita",
-            code: "NRT",
+            name: "Tokyo Station",
+            code: "TYO",
             city: "Tokyo",
             country: "Japan",
-            latitude: 35.7720,
-            longitude: 140.3929,
-            timezone: "Asia/Tokyo"
+            latitude: 35.6812,
+            longitude: 139.7671,
+            timezone: "Asia/Tokyo",
+            railLine: "Shinkansen"
         ),
         Station(
-            name: "Singapore Changi",
-            code: "SIN",
-            city: "Singapore",
-            country: "Singapore",
-            latitude: 1.3644,
-            longitude: 103.9915,
-            timezone: "Asia/Singapore"
+            name: "Shin-Osaka Station",
+            code: "OSA",
+            city: "Osaka",
+            country: "Japan",
+            latitude: 34.7334,
+            longitude: 135.5001,
+            timezone: "Asia/Tokyo",
+            railLine: "Shinkansen"
         ),
         Station(
-            name: "Dubai International",
-            code: "DXB",
-            city: "Dubai",
-            country: "United Arab Emirates",
-            latitude: 25.2532,
-            longitude: 55.3657,
-            timezone: "Asia/Dubai"
+            name: "Kyoto Station",
+            code: "KYO",
+            city: "Kyoto",
+            country: "Japan",
+            latitude: 34.9856,
+            longitude: 135.7585,
+            timezone: "Asia/Tokyo",
+            railLine: "Shinkansen"
         ),
         Station(
-            name: "Hong Kong International",
-            code: "HKG",
-            city: "Hong Kong",
+            name: "Nagoya Station",
+            code: "NGY",
+            city: "Nagoya",
+            country: "Japan",
+            latitude: 35.1709,
+            longitude: 136.8815,
+            timezone: "Asia/Tokyo",
+            railLine: "Shinkansen"
+        ),
+
+        // France - TGV
+        Station(
+            name: "Paris Gare de Lyon",
+            code: "PLY",
+            city: "Paris",
+            country: "France",
+            latitude: 48.8443,
+            longitude: 2.3743,
+            timezone: "Europe/Paris",
+            railLine: "TGV"
+        ),
+        Station(
+            name: "Lyon Part-Dieu",
+            code: "LPD",
+            city: "Lyon",
+            country: "France",
+            latitude: 45.7606,
+            longitude: 4.8594,
+            timezone: "Europe/Paris",
+            railLine: "TGV"
+        ),
+        Station(
+            name: "Marseille Saint-Charles",
+            code: "MSC",
+            city: "Marseille",
+            country: "France",
+            latitude: 43.3028,
+            longitude: 5.3803,
+            timezone: "Europe/Paris",
+            railLine: "TGV"
+        ),
+
+        // UK - Eurostar / HS1
+        Station(
+            name: "London St Pancras",
+            code: "STP",
+            city: "London",
+            country: "United Kingdom",
+            latitude: 51.5322,
+            longitude: -0.1260,
+            timezone: "Europe/London",
+            railLine: "Eurostar"
+        ),
+
+        // Germany - ICE
+        Station(
+            name: "Berlin Hauptbahnhof",
+            code: "BHB",
+            city: "Berlin",
+            country: "Germany",
+            latitude: 52.5250,
+            longitude: 13.3694,
+            timezone: "Europe/Berlin",
+            railLine: "ICE"
+        ),
+        Station(
+            name: "Frankfurt Hauptbahnhof",
+            code: "FHB",
+            city: "Frankfurt",
+            country: "Germany",
+            latitude: 50.1072,
+            longitude: 8.6638,
+            timezone: "Europe/Berlin",
+            railLine: "ICE"
+        ),
+        Station(
+            name: "Munich Hauptbahnhof",
+            code: "MHB",
+            city: "Munich",
+            country: "Germany",
+            latitude: 48.1403,
+            longitude: 11.5600,
+            timezone: "Europe/Berlin",
+            railLine: "ICE"
+        ),
+
+        // Spain - AVE
+        Station(
+            name: "Madrid Atocha",
+            code: "MAT",
+            city: "Madrid",
+            country: "Spain",
+            latitude: 40.4065,
+            longitude: -3.6892,
+            timezone: "Europe/Madrid",
+            railLine: "AVE"
+        ),
+        Station(
+            name: "Barcelona Sants",
+            code: "BSA",
+            city: "Barcelona",
+            country: "Spain",
+            latitude: 41.3793,
+            longitude: 2.1404,
+            timezone: "Europe/Madrid",
+            railLine: "AVE"
+        ),
+
+        // China - CRH
+        Station(
+            name: "Beijing South",
+            code: "BJS",
+            city: "Beijing",
             country: "China",
-            latitude: 22.3080,
-            longitude: 113.9185,
-            timezone: "Asia/Hong_Kong"
+            latitude: 39.8652,
+            longitude: 116.3785,
+            timezone: "Asia/Shanghai",
+            railLine: "CRH"
+        ),
+        Station(
+            name: "Shanghai Hongqiao",
+            code: "SHH",
+            city: "Shanghai",
+            country: "China",
+            latitude: 31.1944,
+            longitude: 121.3200,
+            timezone: "Asia/Shanghai",
+            railLine: "CRH"
         )
     ]
 
@@ -176,9 +227,21 @@ extension Station {
         sampleStations.first { $0.code == code }
     }
 
-    static var london: Station { sampleStations[0] }
-    static var paris: Station { sampleStations[1] }
-    static var chicago: Station { sampleStations[4] }
-    static var newYork: Station { sampleStations[5] }
-    static var tokyo: Station { sampleStations[8] }
+    // Convenience accessors
+    static var tokyo: Station { sampleStations[0] }
+    static var osaka: Station { sampleStations[1] }
+    static var kyoto: Station { sampleStations[2] }
+    static var paris: Station { sampleStations[4] }
+    static var lyon: Station { sampleStations[5] }
+    static var london: Station { sampleStations[7] }
+    static var berlin: Station { sampleStations[8] }
+
+    // Get stations by rail line
+    static func stations(forLine line: String) -> [Station] {
+        sampleStations.filter { $0.railLine == line }
+    }
+
+    static var railLines: [String] {
+        Array(Set(sampleStations.map { $0.railLine })).sorted()
+    }
 }
