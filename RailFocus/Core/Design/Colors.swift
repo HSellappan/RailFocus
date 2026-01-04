@@ -34,6 +34,22 @@ extension Color {
     static let rfTrackLine = Color(hex: "CBD5E1")
     static let rfTrackLineActive = Color(hex: "3B82F6")
     static let rfStationMarker = Color(hex: "1E293B")
+
+    // Dark theme specific
+    static let rfDarkBackground = Color(hex: "000000")
+    static let rfDarkSurface = Color(hex: "1C1C1E")
+    static let rfDarkSurfaceElevated = Color(hex: "2C2C2E")
+    static let rfGlassBackground = Color.white.opacity(0.08)
+    static let rfGlassBorder = Color.white.opacity(0.15)
+
+    // Gradient colors for "distracted?" text
+    static let rfGradientBlue1 = Color(hex: "4A6FA5")
+    static let rfGradientBlue2 = Color(hex: "6B8CBF")
+    static let rfGradientBlue3 = Color(hex: "8BA8D9")
+
+    // Boarding pass colors
+    static let rfBoardingPassBg = Color(hex: "F5F5F5")
+    static let rfBoardingPassAccent = Color(hex: "22C55E")
 }
 
 // MARK: - Adaptive Colors (Light/Dark)

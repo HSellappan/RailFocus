@@ -17,35 +17,62 @@ final class AppState {
         set { UserDefaults.standard.set(newValue, forKey: "hasCompletedOnboarding") }
     }
 
-    /// Currently selected tab
-    var selectedTab: AppTab = .home
+    /// Currently selected menu item
+    var selectedMenuItem: MenuItem = .home
 
     /// Whether a journey is currently in progress
     var isJourneyActive: Bool = false
 
-    /// Current journey ID if active
-    var activeJourneyId: UUID?
+    /// Current journey if active
+    var activeJourney: Journey?
 
-    /// Show the ride mode full screen cover
-    var showRideMode: Bool = false
+    /// Show the flight/ride mode full screen cover
+    var showFlightMode: Bool = false
 
-    /// Navigation path for programmatic navigation
-    var navigationPath = NavigationPath()
+    /// Show journey booking sheet
+    var showBookingSheet: Bool = false
+
+    /// Show arrival/completion screen
+    var showArrivalScreen: Bool = false
+
+    /// Services
+    let timerService = FocusTimerService()
+    let journeyRepository = JourneyRepository()
+    let settings = UserSettings()
 
     init() {}
 
     // MARK: - Actions
 
-    func startJourney(id: UUID) {
-        activeJourneyId = id
+    func startJourney(_ journey: Journey) {
+        var newJourney = journey
+        newJourney.start()
+        activeJourney = newJourney
+        journeyRepository.add(newJourney)
         isJourneyActive = true
-        showRideMode = true
+        showFlightMode = true
+        timerService.start(duration: journey.scheduledDuration)
     }
 
-    func endJourney() {
-        showRideMode = false
+    func completeJourney() {
+        guard var journey = activeJourney else { return }
+        journey.complete()
+        journeyRepository.update(journey)
+        timerService.reset()
+        showFlightMode = false
+        showArrivalScreen = true
         isJourneyActive = false
-        activeJourneyId = nil
+        activeJourney = nil
+    }
+
+    func interruptJourney() {
+        guard var journey = activeJourney else { return }
+        journey.interrupt()
+        journeyRepository.update(journey)
+        timerService.reset()
+        showFlightMode = false
+        isJourneyActive = false
+        activeJourney = nil
     }
 
     func completeOnboarding() {
@@ -57,30 +84,33 @@ final class AppState {
     }
 }
 
-// MARK: - App Tabs
+// MARK: - Menu Items (Side Menu)
 
-enum AppTab: String, CaseIterable, Identifiable {
+enum MenuItem: String, CaseIterable, Identifiable {
     case home
-    case logs
-    case insights
+    case inProgress
+    case history
+    case trends
     case settings
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
-        case .home: return "Journey"
-        case .logs: return "Logs"
-        case .insights: return "Insights"
+        case .home: return "Home"
+        case .inProgress: return "In Progress"
+        case .history: return "History"
+        case .trends: return "Trends"
         case .settings: return "Settings"
         }
     }
 
     var icon: String {
         switch self {
-        case .home: return "tram.fill"
-        case .logs: return "list.bullet"
-        case .insights: return "chart.bar.fill"
+        case .home: return "globe.americas.fill"
+        case .inProgress: return "airplane"
+        case .history: return "clock.fill"
+        case .trends: return "chart.line.uptrend.xyaxis"
         case .settings: return "gearshape.fill"
         }
     }
