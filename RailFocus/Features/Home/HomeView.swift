@@ -218,8 +218,12 @@ struct HomeView: View {
     // MARK: - Actions
 
     private func startJourney() {
-        let journeyId = UUID()
-        appState.startJourney(id: journeyId)
+        let journey = Journey(
+            origin: .tokyo,
+            destination: .osaka,
+            duration: TimeInterval(25 * 60)
+        )
+        appState.startJourney(journey)
     }
 }
 
