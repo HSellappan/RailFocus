@@ -29,7 +29,7 @@ struct UserProgress: Codable {
         self.longestStreak = 0
         self.lastJourneyDate = nil
         self.achievements = []
-        self.visitedStations = []
+        self.visitedStations = Set<String>()
     }
 
     // MARK: - Computed Properties
@@ -140,15 +140,15 @@ struct Achievement: Identifiable, Codable {
 
     static let firstJourney = Achievement(
         id: "first_journey",
-        name: "First Flight",
+        name: "First Ride",
         description: "Complete your first focus journey",
-        icon: "airplane.departure",
+        icon: "tram.fill",
         unlockedAt: Date()
     )
 
     static let tenJourneys = Achievement(
         id: "ten_journeys",
-        name: "Frequent Flyer",
+        name: "Rail Regular",
         description: "Complete 10 focus journeys",
         icon: "star.fill",
         unlockedAt: Date()
