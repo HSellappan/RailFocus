@@ -150,7 +150,7 @@ struct GlobeMapView: View {
         }
     }
 
-    private var mapStyleConfiguration: SwiftUI.MapStyle {
+    private var mapStyleConfiguration: MapKit.MapStyle {
         switch mapStyle {
         case .monochrome:
             return .standard(elevation: .realistic, emphasis: .muted)
