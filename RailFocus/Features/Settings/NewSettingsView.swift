@@ -221,7 +221,7 @@ private struct SettingsRow: View {
 
             Text(title)
                 .font(.system(size: 16))
-                .foregroundStyle(isDestructive ? .rfError : .white)
+                .foregroundStyle(isDestructive ? Color.rfError : Color.white)
 
             Spacer()
 
@@ -285,27 +285,11 @@ struct MapStyleSettingsView: View {
             ScrollView {
                 VStack(spacing: 12) {
                     ForEach(RFMapStyle.allCases) { style in
-                        Button {
+                        MapStyleOptionRow(
+                            style: style,
+                            isSelected: appState.settings.mapStyle == style
+                        ) {
                             appState.settings.mapStyle = style
-                        } label: {
-                            HStack {
-                                Text(style.displayName)
-                                    .font(.system(size: 16))
-                                    .foregroundStyle(.white)
-
-                                Spacer()
-
-                                if appState.settings.mapStyle == style {
-                                    Image(systemName: "checkmark")
-                                        .font(.system(size: 14, weight: .semibold))
-                                        .foregroundStyle(.rfSuccess)
-                                }
-                            }
-                            .padding(16)
-                            .background(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .fill(Color.white.opacity(0.08))
-                            )
                         }
                     }
                 }
@@ -315,6 +299,35 @@ struct MapStyleSettingsView: View {
         .navigationTitle("Map Style")
         .navigationBarTitleDisplayMode(.inline)
         .preferredColorScheme(.dark)
+    }
+}
+
+private struct MapStyleOptionRow: View {
+    let style: RFMapStyle
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack {
+                Text(style.displayName)
+                    .font(.system(size: 16))
+                    .foregroundStyle(Color.white)
+
+                Spacer()
+
+                if isSelected {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(Color.rfSuccess)
+                }
+            }
+            .padding(16)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color.white.opacity(0.08))
+            )
+        }
     }
 }
 
@@ -332,27 +345,11 @@ struct DurationSettingsView: View {
             ScrollView {
                 VStack(spacing: 12) {
                     ForEach(durations, id: \.self) { duration in
-                        Button {
+                        DurationOptionRow(
+                            duration: duration,
+                            isSelected: appState.settings.defaultDuration == duration
+                        ) {
                             appState.settings.defaultDuration = duration
-                        } label: {
-                            HStack {
-                                Text("\(duration) minutes")
-                                    .font(.system(size: 16))
-                                    .foregroundStyle(.white)
-
-                                Spacer()
-
-                                if appState.settings.defaultDuration == duration {
-                                    Image(systemName: "checkmark")
-                                        .font(.system(size: 14, weight: .semibold))
-                                        .foregroundStyle(.rfSuccess)
-                                }
-                            }
-                            .padding(16)
-                            .background(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .fill(Color.white.opacity(0.08))
-                            )
                         }
                     }
                 }
@@ -362,6 +359,35 @@ struct DurationSettingsView: View {
         .navigationTitle("Default Duration")
         .navigationBarTitleDisplayMode(.inline)
         .preferredColorScheme(.dark)
+    }
+}
+
+private struct DurationOptionRow: View {
+    let duration: Int
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack {
+                Text("\(duration) minutes")
+                    .font(.system(size: 16))
+                    .foregroundStyle(Color.white)
+
+                Spacer()
+
+                if isSelected {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(Color.rfSuccess)
+                }
+            }
+            .padding(16)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color.white.opacity(0.08))
+            )
+        }
     }
 }
 
