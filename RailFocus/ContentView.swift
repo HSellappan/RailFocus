@@ -102,7 +102,7 @@ struct InProgressView: View {
                         } label: {
                             Text("Go to Home")
                                 .font(.system(size: 15, weight: .medium))
-                                .foregroundStyle(.rfElectricBlue)
+                                .foregroundStyle(Color.rfElectricBlue)
                         }
                         .padding(.top, 8)
                     }
