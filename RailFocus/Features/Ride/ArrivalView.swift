@@ -33,14 +33,14 @@ struct ArrivalView: View {
 
                     Image(systemName: "checkmark")
                         .font(.system(size: 40, weight: .bold))
-                        .foregroundStyle(.rfSuccess)
+                        .foregroundStyle(Color.rfSuccess)
                 }
 
                 // Arrival text
                 VStack(spacing: 8) {
                     Text("ARRIVED")
                         .font(.system(size: 14, weight: .bold))
-                        .foregroundStyle(.rfSuccess)
+                        .foregroundStyle(Color.rfSuccess)
                         .tracking(2)
 
                     if let journey = lastJourney {
@@ -154,7 +154,7 @@ private struct StatColumn: View {
         VStack(spacing: 8) {
             Image(systemName: icon)
                 .font(.system(size: 18))
-                .foregroundStyle(.rfSuccess)
+                .foregroundStyle(Color.rfSuccess)
 
             Text(value)
                 .font(.system(size: 18, weight: .bold))
