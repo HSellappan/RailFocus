@@ -99,6 +99,18 @@ struct NewHomeView: View {
         .fullScreenCover(isPresented: $showArrivalScreen) {
             ArrivalView()
         }
+        .fullScreenCover(isPresented: Binding(
+            get: { appState.showBoardingTicket },
+            set: { appState.showBoardingTicket = $0 }
+        )) {
+            if let journey = appState.pendingJourney {
+                BoardingTicketView(journey: journey) {
+                    // On board - start the actual journey
+                    appState.showBoardingTicket = false
+                    appState.startJourney(journey)
+                }
+            }
+        }
         .onChange(of: appState.showBookingSheet) { _, newValue in
             showBookingSheet = newValue
         }
@@ -272,8 +284,6 @@ struct JourneyBookingSheet: View {
     @State private var selectedDestination: Station = .osaka
     @State private var selectedDuration: Int = 25
     @State private var selectedTag: FocusTag?
-    @State private var showBoardingTicket = false
-    @State private var pendingJourney: Journey?
 
     private let durationOptions = [25, 45, 60, 90]
 
@@ -376,18 +386,6 @@ struct JourneyBookingSheet: View {
             }
         }
         .preferredColorScheme(.dark)
-        .fullScreenCover(isPresented: $showBoardingTicket) {
-            if let journey = pendingJourney {
-                BoardingTicketView(journey: journey) {
-                    // On board - start the actual journey
-                    showBoardingTicket = false
-                    dismiss()
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                        appState.startJourney(journey)
-                    }
-                }
-            }
-        }
     }
 
     private func showTicket() {
@@ -397,8 +395,11 @@ struct JourneyBookingSheet: View {
             duration: TimeInterval(selectedDuration * 60),
             tag: selectedTag
         )
-        pendingJourney = journey
-        showBoardingTicket = true
+        appState.pendingJourney = journey
+        dismiss()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            appState.showBoardingTicket = true
+        }
     }
 }
 

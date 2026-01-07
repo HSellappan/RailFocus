@@ -35,6 +35,12 @@ final class AppState {
     /// Show arrival/completion screen
     var showArrivalScreen: Bool = false
 
+    /// Show boarding ticket view
+    var showBoardingTicket: Bool = false
+
+    /// Pending journey for boarding
+    var pendingJourney: Journey?
+
     /// Services
     let timerService = FocusTimerService()
     let journeyRepository = JourneyRepository()
