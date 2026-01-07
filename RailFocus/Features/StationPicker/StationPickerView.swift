@@ -222,7 +222,7 @@ private struct StationRow: View {
                 if isSelected {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.system(size: 20))
-                        .foregroundStyle(.rfElectricBlue)
+                        .foregroundStyle(Color.rfElectricBlue)
                 }
             }
             .padding(.vertical, 12)
