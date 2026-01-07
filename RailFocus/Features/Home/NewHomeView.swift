@@ -2,7 +2,7 @@
 //  NewHomeView.swift
 //  RailFocus
 //
-//  Home screen with 3D globe and side menu
+//  Home screen with European rail map and side menu
 //
 
 import SwiftUI
@@ -18,17 +18,13 @@ struct NewHomeView: View {
 
     var body: some View {
         ZStack {
-            // Globe map background
-            GlobeMapView(
-                userLatitude: appState.settings.userLatitude,
-                userLongitude: appState.settings.userLongitude,
-                mapStyle: appState.settings.mapStyle
-            )
-            .ignoresSafeArea()
+            // Europe-focused rail map
+            EuropeRailMapView(mapStyle: appState.settings.mapStyle)
+                .ignoresSafeArea()
 
-            // Stars overlay
+            // Stars overlay (subtle)
             StarsBackgroundView()
-                .opacity(0.3)
+                .opacity(0.2)
                 .allowsHitTesting(false)
 
             // Content overlay
@@ -39,7 +35,7 @@ struct NewHomeView: View {
                         .font(.system(size: 16))
                         .foregroundStyle(Color.white.opacity(0.6))
 
-                    Text(appState.settings.userCity)
+                    Text("Europe")
                         .font(.system(size: 32, weight: .bold))
                         .foregroundStyle(.white)
                 }
@@ -54,14 +50,18 @@ struct NewHomeView: View {
                     Button {
                         showBookingSheet = true
                     } label: {
-                        Text("Start Journey")
-                            .font(.system(size: 17, weight: .semibold))
-                            .foregroundStyle(.black)
-                            .frame(width: 180, height: 50)
-                            .background(
-                                Capsule()
-                                    .fill(Color.white)
-                            )
+                        HStack(spacing: 10) {
+                            Image(systemName: "train.side.front.car")
+                                .font(.system(size: 16, weight: .semibold))
+                            Text("Start Journey")
+                                .font(.system(size: 17, weight: .semibold))
+                        }
+                        .foregroundStyle(.black)
+                        .frame(width: 200, height: 50)
+                        .background(
+                            Capsule()
+                                .fill(Color.white)
+                        )
                     }
 
                     // Side menu
@@ -105,7 +105,6 @@ struct NewHomeView: View {
         )) {
             if let journey = appState.pendingJourney {
                 BoardingTicketView(journey: journey) {
-                    // On board - start the actual journey
                     appState.showBoardingTicket = false
                     appState.startJourney(journey)
                 }
@@ -126,32 +125,62 @@ struct NewHomeView: View {
     }
 }
 
-// MARK: - Globe Map View
+// MARK: - Europe Rail Map View
 
-struct GlobeMapView: View {
-    let userLatitude: Double
-    let userLongitude: Double
+struct EuropeRailMapView: View {
     let mapStyle: RFMapStyle
 
+    // Europe center (roughly central Europe)
+    private let europeCenter = CLLocationCoordinate2D(latitude: 48.5, longitude: 8.0)
+    private let europeDistance: Double = 4500000 // ~4500km view
+
     @State private var cameraPosition: MapCameraPosition = .automatic
+    @State private var animatedTrainPosition: Double = 0
 
     var body: some View {
         Map(position: $cameraPosition) {
-            // User location marker - realistic train station pin
-            Annotation("", coordinate: CLLocationCoordinate2D(latitude: userLatitude, longitude: userLongitude)) {
-                TrainStationMarker()
+            // Draw all rail routes
+            ForEach(TrainRoute.allRoutes) { route in
+                MapPolyline(coordinates: route.waypoints)
+                    .stroke(
+                        Color(hex: route.color)?.opacity(0.6) ?? Color.white.opacity(0.4),
+                        lineWidth: 2
+                    )
+            }
+
+            // Station markers
+            ForEach(Station.europeStations) { station in
+                Annotation("", coordinate: station.locationCoordinate) {
+                    StationMarkerView(station: station)
+                }
+            }
+
+            // Animated train on Eurostar route (demo)
+            let eurostarRoute = TrainRoute.eurostar
+            if eurostarRoute.waypoints.count >= 2 {
+                Annotation("", coordinate: interpolatedPosition(on: eurostarRoute.waypoints, progress: animatedTrainPosition)) {
+                    ModernTrainIcon()
+                }
             }
         }
         .mapStyle(mapStyleConfiguration)
         .onAppear {
             cameraPosition = .camera(
                 MapCamera(
-                    centerCoordinate: CLLocationCoordinate2D(latitude: userLatitude, longitude: userLongitude),
-                    distance: 20000000,
+                    centerCoordinate: europeCenter,
+                    distance: europeDistance,
                     heading: 0,
                     pitch: 0
                 )
             )
+
+            // Start train animation
+            withAnimation(
+                .linear(duration: 20)
+                .repeatForever(autoreverses: true)
+            ) {
+                animatedTrainPosition = 1.0
+            }
         }
     }
 
@@ -167,60 +196,116 @@ struct GlobeMapView: View {
             return .imagery(elevation: .realistic)
         }
     }
+
+    // Interpolate position along route
+    private func interpolatedPosition(on waypoints: [CLLocationCoordinate2D], progress: Double) -> CLLocationCoordinate2D {
+        guard waypoints.count >= 2 else {
+            return waypoints.first ?? europeCenter
+        }
+
+        let totalSegments = waypoints.count - 1
+        let segmentProgress = progress * Double(totalSegments)
+        let segmentIndex = min(Int(segmentProgress), totalSegments - 1)
+        let localProgress = segmentProgress - Double(segmentIndex)
+
+        let start = waypoints[segmentIndex]
+        let end = waypoints[min(segmentIndex + 1, waypoints.count - 1)]
+
+        return CLLocationCoordinate2D(
+            latitude: start.latitude + (end.latitude - start.latitude) * localProgress,
+            longitude: start.longitude + (end.longitude - start.longitude) * localProgress
+        )
+    }
 }
 
-// MARK: - Train Station Marker
+// MARK: - Station Marker View
 
-struct TrainStationMarker: View {
-    @State private var isPulsing = false
+struct StationMarkerView: View {
+    let station: Station
+
+    var body: some View {
+        VStack(spacing: 2) {
+            // Station dot
+            Circle()
+                .fill(railLineColor)
+                .frame(width: 10, height: 10)
+                .overlay(
+                    Circle()
+                        .stroke(Color.white, lineWidth: 2)
+                )
+                .shadow(color: railLineColor.opacity(0.5), radius: 3)
+        }
+    }
+
+    private var railLineColor: Color {
+        switch station.railLine {
+        case "TGV": return Color(hex: "9B2335") ?? .red
+        case "ICE": return Color(hex: "EC0016") ?? .red
+        case "Eurostar": return Color(hex: "FFCD00") ?? .yellow
+        case "AVE": return Color(hex: "6B2C91") ?? .purple
+        case "Frecciarossa": return Color(hex: "C8102E") ?? .red
+        case "Thalys": return Color(hex: "9B2335") ?? .red
+        case "SBB": return Color.red
+        case "ÖBB": return Color.red
+        default: return .white
+        }
+    }
+}
+
+// MARK: - Modern Train Icon
+
+struct ModernTrainIcon: View {
+    @State private var isGlowing = false
 
     var body: some View {
         ZStack {
-            // Outer pulse ring
+            // Glow effect
             Circle()
-                .stroke(Color.rfElectricBlue.opacity(0.3), lineWidth: 2)
-                .frame(width: 44, height: 44)
-                .scaleEffect(isPulsing ? 1.3 : 1.0)
-                .opacity(isPulsing ? 0 : 0.6)
-
-            // Middle ring
-            Circle()
-                .fill(Color.rfElectricBlue.opacity(0.15))
+                .fill(Color.rfElectricBlue.opacity(0.3))
                 .frame(width: 36, height: 36)
+                .blur(radius: 4)
+                .scaleEffect(isGlowing ? 1.2 : 1.0)
 
-            // Inner circle with train icon
+            // Train body
             ZStack {
-                Circle()
+                // Background
+                RoundedRectangle(cornerRadius: 6)
                     .fill(
                         LinearGradient(
-                            colors: [Color.rfElectricBlue, Color.rfElectricBlue.opacity(0.8)],
+                            colors: [
+                                Color.rfElectricBlue,
+                                Color.rfElectricBlue.opacity(0.8)
+                            ],
                             startPoint: .top,
                             endPoint: .bottom
                         )
                     )
-                    .frame(width: 28, height: 28)
-                    .shadow(color: Color.rfElectricBlue.opacity(0.5), radius: 4, x: 0, y: 2)
+                    .frame(width: 28, height: 18)
 
-                Image(systemName: "train.side.front.car")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.white)
-            }
+                // Front light
+                Circle()
+                    .fill(Color.white)
+                    .frame(width: 4, height: 4)
+                    .offset(x: 8)
 
-            // Pin point indicator
-            VStack(spacing: 0) {
-                Spacer()
-                    .frame(height: 36)
-                Triangle()
-                    .fill(Color.rfElectricBlue)
-                    .frame(width: 10, height: 6)
+                // Windows
+                HStack(spacing: 3) {
+                    ForEach(0..<3, id: \.self) { _ in
+                        RoundedRectangle(cornerRadius: 1)
+                            .fill(Color.white.opacity(0.8))
+                            .frame(width: 4, height: 6)
+                    }
+                }
+                .offset(x: -4)
             }
+            .shadow(color: Color.rfElectricBlue.opacity(0.5), radius: 4, x: 0, y: 2)
         }
         .onAppear {
             withAnimation(
-                .easeInOut(duration: 1.5)
-                .repeatForever(autoreverses: false)
+                .easeInOut(duration: 1.0)
+                .repeatForever(autoreverses: true)
             ) {
-                isPulsing = true
+                isGlowing = true
             }
         }
     }
@@ -280,10 +365,12 @@ struct JourneyBookingSheet: View {
     @Environment(\.appState) private var appState
     @Environment(\.dismiss) private var dismiss
 
-    @State private var selectedOrigin: Station = .tokyo
-    @State private var selectedDestination: Station = .osaka
+    @State private var selectedOrigin: Station = .parisGareDeLyon
+    @State private var selectedDestination: Station = .lyonPartDieu
     @State private var selectedDuration: Int = 25
     @State private var selectedTag: FocusTag?
+    @State private var showOriginPicker = false
+    @State private var showDestinationPicker = false
 
     private let durationOptions = [25, 45, 60, 90]
 
@@ -300,25 +387,49 @@ struct JourneyBookingSheet: View {
                                 .font(.system(size: 14, weight: .medium))
                                 .foregroundStyle(Color.white.opacity(0.6))
 
-                            HStack {
+                            HStack(spacing: 12) {
                                 // Origin
-                                StationButton(station: selectedOrigin, label: "From") {
-                                    // Show station picker
+                                StationSelectButton(
+                                    station: selectedOrigin,
+                                    label: "From"
+                                ) {
+                                    showOriginPicker = true
                                 }
 
-                                Image(systemName: "arrow.right")
-                                    .foregroundStyle(Color.white.opacity(0.4))
+                                // Swap button
+                                Button {
+                                    let temp = selectedOrigin
+                                    selectedOrigin = selectedDestination
+                                    selectedDestination = temp
+                                } label: {
+                                    Image(systemName: "arrow.left.arrow.right")
+                                        .font(.system(size: 14, weight: .medium))
+                                        .foregroundStyle(Color.white.opacity(0.6))
+                                        .frame(width: 36, height: 36)
+                                        .background(
+                                            Circle()
+                                                .fill(Color.white.opacity(0.1))
+                                        )
+                                }
 
                                 // Destination
-                                StationButton(station: selectedDestination, label: "To") {
-                                    // Show station picker
+                                StationSelectButton(
+                                    station: selectedDestination,
+                                    label: "To"
+                                ) {
+                                    showDestinationPicker = true
                                 }
                             }
                         }
 
+                        // Route info
+                        if let route = TrainRoute.findRoute(from: selectedOrigin, to: selectedDestination) {
+                            RouteInfoBadge(route: route, origin: selectedOrigin, destination: selectedDestination)
+                        }
+
                         // Duration selection
                         VStack(alignment: .leading, spacing: 12) {
-                            Text("Duration")
+                            Text("Focus Duration")
                                 .font(.system(size: 14, weight: .medium))
                                 .foregroundStyle(Color.white.opacity(0.6))
 
@@ -356,19 +467,23 @@ struct JourneyBookingSheet: View {
 
                         Spacer(minLength: 40)
 
-                        // Start button
+                        // Get Ticket button
                         Button {
                             showTicket()
                         } label: {
-                            Text("Get Ticket")
-                                .font(.system(size: 17, weight: .semibold))
-                                .foregroundStyle(.black)
-                                .frame(maxWidth: .infinity)
-                                .frame(height: 56)
-                                .background(
-                                    Capsule()
-                                        .fill(Color.white)
-                                )
+                            HStack(spacing: 10) {
+                                Image(systemName: "ticket.fill")
+                                    .font(.system(size: 16))
+                                Text("Get Ticket")
+                                    .font(.system(size: 17, weight: .semibold))
+                            }
+                            .foregroundStyle(.black)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 56)
+                            .background(
+                                Capsule()
+                                    .fill(Color.white)
+                            )
                         }
                     }
                     .padding(24)
@@ -386,6 +501,20 @@ struct JourneyBookingSheet: View {
             }
         }
         .preferredColorScheme(.dark)
+        .sheet(isPresented: $showOriginPicker) {
+            StationPickerView(
+                selectedStation: $selectedOrigin,
+                title: "Select Origin",
+                excludeStation: selectedDestination
+            )
+        }
+        .sheet(isPresented: $showDestinationPicker) {
+            StationPickerView(
+                selectedStation: $selectedDestination,
+                title: "Select Destination",
+                excludeStation: selectedOrigin
+            )
+        }
     }
 
     private func showTicket() {
@@ -403,37 +532,92 @@ struct JourneyBookingSheet: View {
     }
 }
 
-// MARK: - Supporting Components
+// MARK: - Station Select Button
 
-struct StationButton: View {
+struct StationSelectButton: View {
     let station: Station
     let label: String
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 6) {
                 Text(label)
                     .font(.system(size: 11))
                     .foregroundStyle(Color.white.opacity(0.4))
 
-                Text(station.code)
-                    .font(.system(size: 24, weight: .bold))
-                    .foregroundStyle(.white)
+                HStack(spacing: 8) {
+                    Text(station.countryFlag)
+                        .font(.system(size: 18))
 
-                Text(station.city)
-                    .font(.system(size: 12))
-                    .foregroundStyle(Color.white.opacity(0.6))
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(station.code)
+                            .font(.system(size: 20, weight: .bold))
+                            .foregroundStyle(.white)
+
+                        Text(station.city)
+                            .font(.system(size: 12))
+                            .foregroundStyle(Color.white.opacity(0.6))
+                    }
+                }
+
+                Text(station.railLine)
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(Color.white.opacity(0.5))
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(16)
+            .padding(14)
             .background(
                 RoundedRectangle(cornerRadius: 12)
                     .fill(Color.white.opacity(0.08))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                    )
             )
         }
     }
 }
+
+// MARK: - Route Info Badge
+
+struct RouteInfoBadge: View {
+    let route: TrainRoute
+    let origin: Station
+    let destination: Station
+
+    var body: some View {
+        HStack(spacing: 12) {
+            // Route color indicator
+            Circle()
+                .fill(Color(hex: route.color) ?? .white)
+                .frame(width: 12, height: 12)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(route.name)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(.white)
+
+                Text("\(origin.city) → \(destination.city)")
+                    .font(.system(size: 12))
+                    .foregroundStyle(Color.white.opacity(0.6))
+            }
+
+            Spacer()
+
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 18))
+                .foregroundStyle(.rfSuccess)
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color.white.opacity(0.05))
+        )
+    }
+}
+
+// MARK: - Duration Button
 
 struct DurationButton: View {
     let minutes: Int
@@ -454,6 +638,8 @@ struct DurationButton: View {
         }
     }
 }
+
+// MARK: - Tag Button
 
 struct TagButton: View {
     let tag: FocusTag
