@@ -125,16 +125,9 @@ struct GlobeMapView: View {
 
     var body: some View {
         Map(position: $cameraPosition) {
-            // User location marker
+            // User location marker - realistic train station pin
             Annotation("", coordinate: CLLocationCoordinate2D(latitude: userLatitude, longitude: userLongitude)) {
-                Circle()
-                    .fill(Color.white)
-                    .frame(width: 12, height: 12)
-                    .overlay(
-                        Circle()
-                            .stroke(Color.white.opacity(0.5), lineWidth: 2)
-                            .frame(width: 20, height: 20)
-                    )
+                TrainStationMarker()
             }
         }
         .mapStyle(mapStyleConfiguration)
@@ -161,6 +154,76 @@ struct GlobeMapView: View {
         case .satellite:
             return .imagery(elevation: .realistic)
         }
+    }
+}
+
+// MARK: - Train Station Marker
+
+struct TrainStationMarker: View {
+    @State private var isPulsing = false
+
+    var body: some View {
+        ZStack {
+            // Outer pulse ring
+            Circle()
+                .stroke(Color.rfElectricBlue.opacity(0.3), lineWidth: 2)
+                .frame(width: 44, height: 44)
+                .scaleEffect(isPulsing ? 1.3 : 1.0)
+                .opacity(isPulsing ? 0 : 0.6)
+
+            // Middle ring
+            Circle()
+                .fill(Color.rfElectricBlue.opacity(0.15))
+                .frame(width: 36, height: 36)
+
+            // Inner circle with train icon
+            ZStack {
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            colors: [Color.rfElectricBlue, Color.rfElectricBlue.opacity(0.8)],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+                    .frame(width: 28, height: 28)
+                    .shadow(color: Color.rfElectricBlue.opacity(0.5), radius: 4, x: 0, y: 2)
+
+                Image(systemName: "train.side.front.car")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.white)
+            }
+
+            // Pin point indicator
+            VStack(spacing: 0) {
+                Spacer()
+                    .frame(height: 36)
+                Triangle()
+                    .fill(Color.rfElectricBlue)
+                    .frame(width: 10, height: 6)
+            }
+        }
+        .onAppear {
+            withAnimation(
+                .easeInOut(duration: 1.5)
+                .repeatForever(autoreverses: false)
+            ) {
+                isPulsing = true
+            }
+        }
+    }
+}
+
+// MARK: - Triangle Shape
+
+struct Triangle: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(to: CGPoint(x: rect.midX, y: rect.maxY))
+        path.addLine(to: CGPoint(x: rect.minX, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
+        path.closeSubpath()
+        return path
     }
 }
 
@@ -209,6 +272,8 @@ struct JourneyBookingSheet: View {
     @State private var selectedDestination: Station = .osaka
     @State private var selectedDuration: Int = 25
     @State private var selectedTag: FocusTag?
+    @State private var showBoardingTicket = false
+    @State private var pendingJourney: Journey?
 
     private let durationOptions = [25, 45, 60, 90]
 
@@ -283,9 +348,9 @@ struct JourneyBookingSheet: View {
 
                         // Start button
                         Button {
-                            startJourney()
+                            showTicket()
                         } label: {
-                            Text("Start Journey")
+                            Text("Get Ticket")
                                 .font(.system(size: 17, weight: .semibold))
                                 .foregroundStyle(.black)
                                 .frame(maxWidth: .infinity)
@@ -311,19 +376,29 @@ struct JourneyBookingSheet: View {
             }
         }
         .preferredColorScheme(.dark)
+        .fullScreenCover(isPresented: $showBoardingTicket) {
+            if let journey = pendingJourney {
+                BoardingTicketView(journey: journey) {
+                    // On board - start the actual journey
+                    showBoardingTicket = false
+                    dismiss()
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        appState.startJourney(journey)
+                    }
+                }
+            }
+        }
     }
 
-    private func startJourney() {
+    private func showTicket() {
         let journey = Journey(
             origin: selectedOrigin,
             destination: selectedDestination,
             duration: TimeInterval(selectedDuration * 60),
             tag: selectedTag
         )
-        dismiss()
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-            appState.startJourney(journey)
-        }
+        pendingJourney = journey
+        showBoardingTicket = true
     }
 }
 
