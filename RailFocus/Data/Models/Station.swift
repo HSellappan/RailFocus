@@ -645,3 +645,119 @@ extension TrainRoute {
         return Array(destinations).sorted { $0.city < $1.city }
     }
 }
+
+// MARK: - Rail Connection (with real travel times)
+
+struct RailConnection: Identifiable {
+    let id = UUID()
+    let from: Station
+    let to: Station
+    let travelTimeMinutes: Int
+    let railLine: String
+    let trainService: String // e.g., "Eurostar", "TGV inOui", "ICE Sprinter"
+
+    var formattedTime: String {
+        let hours = travelTimeMinutes / 60
+        let minutes = travelTimeMinutes % 60
+        if hours > 0 {
+            return minutes > 0 ? "\(hours)h \(minutes)m" : "\(hours)h"
+        }
+        return "\(minutes)m"
+    }
+}
+
+// MARK: - Real European Rail Connections
+
+extension RailConnection {
+    // Real travel times based on actual high-speed rail schedules
+    static let allConnections: [RailConnection] = [
+        // Eurostar connections (London)
+        RailConnection(from: .londonStPancras, to: .parisGareDeNord, travelTimeMinutes: 136, railLine: "Eurostar", trainService: "Eurostar"),
+        RailConnection(from: .londonStPancras, to: .brusselsMidi, travelTimeMinutes: 121, railLine: "Eurostar", trainService: "Eurostar"),
+        RailConnection(from: .londonStPancras, to: .amsterdamCentraal, travelTimeMinutes: 223, railLine: "Eurostar", trainService: "Eurostar"),
+
+        // TGV connections (Paris)
+        RailConnection(from: .parisGareDeLyon, to: .lyonPartDieu, travelTimeMinutes: 120, railLine: "TGV", trainService: "TGV inOui"),
+        RailConnection(from: .parisGareDeLyon, to: .marseilleStCharles, travelTimeMinutes: 190, railLine: "TGV", trainService: "TGV inOui"),
+        RailConnection(from: .parisGareDeLyon, to: .nice, travelTimeMinutes: 330, railLine: "TGV", trainService: "TGV inOui"),
+        RailConnection(from: .parisGareDeLyon, to: .bordeauxStJean, travelTimeMinutes: 125, railLine: "TGV", trainService: "TGV inOui"),
+        RailConnection(from: .parisGareDeLyon, to: .strasbourg, travelTimeMinutes: 106, railLine: "TGV", trainService: "TGV inOui"),
+        RailConnection(from: .parisGareDeLyon, to: .zurichHB, travelTimeMinutes: 244, railLine: "TGV", trainService: "TGV Lyria"),
+        RailConnection(from: .parisGareDeLyon, to: .geneva, travelTimeMinutes: 188, railLine: "TGV", trainService: "TGV Lyria"),
+        RailConnection(from: .parisGareDeLyon, to: .milanoCentrale, travelTimeMinutes: 420, railLine: "TGV", trainService: "TGV"),
+
+        // Thalys/Eurostar (Paris Nord)
+        RailConnection(from: .parisGareDeNord, to: .brusselsMidi, travelTimeMinutes: 82, railLine: "Thalys", trainService: "Thalys"),
+        RailConnection(from: .parisGareDeNord, to: .amsterdamCentraal, travelTimeMinutes: 195, railLine: "Thalys", trainService: "Thalys"),
+        RailConnection(from: .parisGareDeNord, to: .cologneHbf, travelTimeMinutes: 220, railLine: "Thalys", trainService: "Thalys"),
+
+        // Lyon connections
+        RailConnection(from: .lyonPartDieu, to: .marseilleStCharles, travelTimeMinutes: 100, railLine: "TGV", trainService: "TGV inOui"),
+        RailConnection(from: .lyonPartDieu, to: .nice, travelTimeMinutes: 270, railLine: "TGV", trainService: "TGV inOui"),
+        RailConnection(from: .lyonPartDieu, to: .geneva, travelTimeMinutes: 108, railLine: "TGV", trainService: "TGV Lyria"),
+
+        // Brussels connections
+        RailConnection(from: .brusselsMidi, to: .amsterdamCentraal, travelTimeMinutes: 113, railLine: "Thalys", trainService: "Thalys"),
+        RailConnection(from: .brusselsMidi, to: .cologneHbf, travelTimeMinutes: 107, railLine: "Thalys", trainService: "Thalys"),
+        RailConnection(from: .brusselsMidi, to: .frankfurtHbf, travelTimeMinutes: 180, railLine: "ICE", trainService: "ICE"),
+
+        // ICE connections (Germany)
+        RailConnection(from: .frankfurtHbf, to: .berlinHbf, travelTimeMinutes: 240, railLine: "ICE", trainService: "ICE Sprinter"),
+        RailConnection(from: .frankfurtHbf, to: .munichHbf, travelTimeMinutes: 190, railLine: "ICE", trainService: "ICE"),
+        RailConnection(from: .frankfurtHbf, to: .cologneHbf, travelTimeMinutes: 62, railLine: "ICE", trainService: "ICE Sprinter"),
+        RailConnection(from: .frankfurtHbf, to: .stuttgartHbf, travelTimeMinutes: 75, railLine: "ICE", trainService: "ICE"),
+        RailConnection(from: .frankfurtHbf, to: .hamburgHbf, travelTimeMinutes: 225, railLine: "ICE", trainService: "ICE"),
+        RailConnection(from: .berlinHbf, to: .hamburgHbf, travelTimeMinutes: 107, railLine: "ICE", trainService: "ICE Sprinter"),
+        RailConnection(from: .berlinHbf, to: .munichHbf, travelTimeMinutes: 240, railLine: "ICE", trainService: "ICE"),
+        RailConnection(from: .munichHbf, to: .stuttgartHbf, travelTimeMinutes: 130, railLine: "ICE", trainService: "ICE"),
+        RailConnection(from: .cologneHbf, to: .hamburgHbf, travelTimeMinutes: 240, railLine: "ICE", trainService: "ICE"),
+
+        // AVE connections (Spain)
+        RailConnection(from: .madridAtocha, to: .barcelonaSants, travelTimeMinutes: 155, railLine: "AVE", trainService: "AVE"),
+        RailConnection(from: .madridAtocha, to: .sevillaSantaJusta, travelTimeMinutes: 140, railLine: "AVE", trainService: "AVE"),
+        RailConnection(from: .madridAtocha, to: .valencia, travelTimeMinutes: 100, railLine: "AVE", trainService: "AVE"),
+        RailConnection(from: .barcelonaSants, to: .valencia, travelTimeMinutes: 170, railLine: "AVE", trainService: "AVE"),
+        RailConnection(from: .barcelonaSants, to: .parisGareDeLyon, travelTimeMinutes: 380, railLine: "AVE", trainService: "AVE International"),
+
+        // Frecciarossa connections (Italy)
+        RailConnection(from: .milanoCentrale, to: .romaTermini, travelTimeMinutes: 175, railLine: "Frecciarossa", trainService: "Frecciarossa 1000"),
+        RailConnection(from: .milanoCentrale, to: .firenzeSMN, travelTimeMinutes: 95, railLine: "Frecciarossa", trainService: "Frecciarossa"),
+        RailConnection(from: .milanoCentrale, to: .veneziaSL, travelTimeMinutes: 145, railLine: "Frecciarossa", trainService: "Frecciarossa"),
+        RailConnection(from: .milanoCentrale, to: .napoliCentrale, travelTimeMinutes: 275, railLine: "Frecciarossa", trainService: "Frecciarossa 1000"),
+        RailConnection(from: .milanoCentrale, to: .bologna, travelTimeMinutes: 65, railLine: "Frecciarossa", trainService: "Frecciarossa"),
+        RailConnection(from: .romaTermini, to: .napoliCentrale, travelTimeMinutes: 70, railLine: "Frecciarossa", trainService: "Frecciarossa 1000"),
+        RailConnection(from: .romaTermini, to: .firenzeSMN, travelTimeMinutes: 95, railLine: "Frecciarossa", trainService: "Frecciarossa"),
+        RailConnection(from: .romaTermini, to: .veneziaSL, travelTimeMinutes: 225, railLine: "Frecciarossa", trainService: "Frecciarossa"),
+        RailConnection(from: .firenzeSMN, to: .veneziaSL, travelTimeMinutes: 125, railLine: "Frecciarossa", trainService: "Frecciarossa"),
+        RailConnection(from: .firenzeSMN, to: .bologna, travelTimeMinutes: 35, railLine: "Frecciarossa", trainService: "Frecciarossa"),
+        RailConnection(from: .bologna, to: .veneziaSL, travelTimeMinutes: 90, railLine: "Frecciarossa", trainService: "Frecciarossa"),
+
+        // Swiss connections
+        RailConnection(from: .zurichHB, to: .geneva, travelTimeMinutes: 170, railLine: "SBB", trainService: "IC"),
+        RailConnection(from: .zurichHB, to: .milanoCentrale, travelTimeMinutes: 195, railLine: "SBB", trainService: "EC"),
+        RailConnection(from: .zurichHB, to: .munichHbf, travelTimeMinutes: 240, railLine: "SBB", trainService: "EC"),
+
+        // Austria connections
+        RailConnection(from: .wienHbf, to: .munichHbf, travelTimeMinutes: 240, railLine: "ÖBB", trainService: "Railjet"),
+        RailConnection(from: .wienHbf, to: .zurichHB, travelTimeMinutes: 480, railLine: "ÖBB", trainService: "Railjet"),
+        RailConnection(from: .wienHbf, to: .veneziaSL, travelTimeMinutes: 420, railLine: "ÖBB", trainService: "EC"),
+    ]
+
+    // Get connections from a specific station
+    static func connections(from station: Station) -> [RailConnection] {
+        allConnections.filter { $0.from == station }
+    }
+
+    // Get connection between two stations
+    static func connection(from origin: Station, to destination: Station) -> RailConnection? {
+        allConnections.first { $0.from == origin && $0.to == destination } ??
+        allConnections.first { $0.from == destination && $0.to == origin }
+    }
+
+    // Get all destinations reachable from a station with travel times
+    static func destinations(from station: Station) -> [(station: Station, connection: RailConnection)] {
+        let outgoing = allConnections.filter { $0.from == station }.map { ($0.to, $0) }
+        let incoming = allConnections.filter { $0.to == station }.map { ($0.from, $0) }
+        return (outgoing + incoming).sorted { $0.1.travelTimeMinutes < $1.1.travelTimeMinutes }
+    }
+}

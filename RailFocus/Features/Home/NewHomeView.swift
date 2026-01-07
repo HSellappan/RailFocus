@@ -15,6 +15,8 @@ struct NewHomeView: View {
     @State private var showBookingSheet = false
     @State private var showRideMode = false
     @State private var showArrivalScreen = false
+    @State private var showHomeStationPicker = false
+    @State private var showDestinationPicker = false
 
     var body: some View {
         ZStack {
@@ -35,9 +37,15 @@ struct NewHomeView: View {
                         .font(.system(size: 16))
                         .foregroundStyle(Color.white.opacity(0.6))
 
-                    Text("Europe")
-                        .font(.system(size: 32, weight: .bold))
-                        .foregroundStyle(.white)
+                    if let homeStation = appState.settings.homeStation {
+                        Text(homeStation.city)
+                            .font(.system(size: 32, weight: .bold))
+                            .foregroundStyle(.white)
+                    } else {
+                        Text("Europe")
+                            .font(.system(size: 32, weight: .bold))
+                            .foregroundStyle(.white)
+                    }
                 }
                 .padding(.top, 60)
                 .padding(.horizontal, 24)
@@ -46,14 +54,36 @@ struct NewHomeView: View {
 
                 // Bottom section
                 VStack(alignment: .leading, spacing: 16) {
+                    // Home station indicator (if set)
+                    if let homeStation = appState.settings.homeStation {
+                        HStack(spacing: 8) {
+                            Text(homeStation.countryFlag)
+                                .font(.system(size: 16))
+                            Text(homeStation.code)
+                                .font(.system(size: 14, weight: .bold))
+                                .foregroundStyle(.black)
+                            Text("•")
+                                .foregroundStyle(Color.white.opacity(0.3))
+                            Text(homeStation.railLine)
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundStyle(Color.white.opacity(0.7))
+                        }
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .background(
+                            Capsule()
+                                .fill(Color.white.opacity(0.15))
+                        )
+                    }
+
                     // Start Journey button
                     Button {
-                        showBookingSheet = true
+                        beginJourney()
                     } label: {
                         HStack(spacing: 10) {
                             Image(systemName: "train.side.front.car")
                                 .font(.system(size: 16, weight: .semibold))
-                            Text("Start Journey")
+                            Text("Begin Journey")
                                 .font(.system(size: 17, weight: .semibold))
                         }
                         .foregroundStyle(.black)
@@ -88,6 +118,36 @@ struct NewHomeView: View {
             }
         }
         .preferredColorScheme(.dark)
+        // Home station picker (first time)
+        .fullScreenCover(isPresented: $showHomeStationPicker) {
+            HomeStationPickerView { station in
+                appState.settings.homeStation = station
+                showHomeStationPicker = false
+                // After setting home station, show destination picker
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    showDestinationPicker = true
+                }
+            }
+        }
+        // Destination picker
+        .fullScreenCover(isPresented: $showDestinationPicker) {
+            if let homeStation = appState.settings.homeStation {
+                DestinationPickerView(originStation: homeStation) { destination, connection, duration in
+                    // Create journey and show boarding ticket
+                    let journey = Journey(
+                        origin: homeStation,
+                        destination: destination,
+                        duration: TimeInterval(duration * 60)
+                    )
+                    appState.pendingJourney = journey
+                    showDestinationPicker = false
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        appState.showBoardingTicket = true
+                    }
+                }
+            }
+        }
+        // Legacy booking sheet (for fallback)
         .sheet(isPresented: $showBookingSheet) {
             JourneyBookingSheet()
                 .presentationDetents([.large])
@@ -121,6 +181,18 @@ struct NewHomeView: View {
         }
         .onChange(of: showBookingSheet) { _, newValue in
             appState.showBookingSheet = newValue
+        }
+    }
+
+    // MARK: - Begin Journey Flow
+
+    private func beginJourney() {
+        if appState.settings.hasSetHomeStation {
+            // User has home station, show destination picker
+            showDestinationPicker = true
+        } else {
+            // First time, show home station picker
+            showHomeStationPicker = true
         }
     }
 }

@@ -47,6 +47,8 @@ final class UserSettings {
         static let userCity = "userCity"
         static let userLatitude = "userLatitude"
         static let userLongitude = "userLongitude"
+        static let homeStationCode = "homeStationCode"
+        static let hasSetHomeStation = "hasSetHomeStation"
     }
 
     // MARK: - Properties
@@ -87,6 +89,34 @@ final class UserSettings {
         didSet { save() }
     }
 
+    var homeStationCode: String {
+        didSet { save() }
+    }
+
+    var hasSetHomeStation: Bool {
+        didSet { save() }
+    }
+
+    // MARK: - Computed
+
+    var homeStation: Station? {
+        get {
+            guard hasSetHomeStation else { return nil }
+            return Station.find(byCode: homeStationCode)
+        }
+        set {
+            if let station = newValue {
+                homeStationCode = station.code
+                hasSetHomeStation = true
+                userCity = station.city
+                userLatitude = station.coordinate.latitude
+                userLongitude = station.coordinate.longitude
+            } else {
+                hasSetHomeStation = false
+            }
+        }
+    }
+
     // MARK: - Init
 
     init() {
@@ -104,14 +134,16 @@ final class UserSettings {
         self.ambientSoundsEnabled = defaults.object(forKey: Keys.ambientSounds) as? Bool ?? true
         self.hapticFeedbackEnabled = defaults.object(forKey: Keys.hapticFeedback) as? Bool ?? true
         self.notificationsEnabled = defaults.object(forKey: Keys.notificationsEnabled) as? Bool ?? true
-        self.userCity = defaults.string(forKey: Keys.userCity) ?? "Chicago"
+        self.userCity = defaults.string(forKey: Keys.userCity) ?? "Paris"
         self.userLatitude = defaults.double(forKey: Keys.userLatitude)
         self.userLongitude = defaults.double(forKey: Keys.userLongitude)
+        self.homeStationCode = defaults.string(forKey: Keys.homeStationCode) ?? "PLY"
+        self.hasSetHomeStation = defaults.bool(forKey: Keys.hasSetHomeStation)
 
-        // Default to Chicago if no location set
+        // Default to Paris if no location set
         if userLatitude == 0 && userLongitude == 0 {
-            userLatitude = 41.8781
-            userLongitude = -87.6298
+            userLatitude = 48.8443
+            userLongitude = 2.3743
         }
     }
 
@@ -128,6 +160,8 @@ final class UserSettings {
         defaults.set(userCity, forKey: Keys.userCity)
         defaults.set(userLatitude, forKey: Keys.userLatitude)
         defaults.set(userLongitude, forKey: Keys.userLongitude)
+        defaults.set(homeStationCode, forKey: Keys.homeStationCode)
+        defaults.set(hasSetHomeStation, forKey: Keys.hasSetHomeStation)
     }
 
     // MARK: - Computed
