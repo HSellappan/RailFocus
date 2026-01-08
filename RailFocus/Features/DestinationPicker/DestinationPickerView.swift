@@ -583,7 +583,7 @@ struct HomeStationPickerView: View {
                     VStack(spacing: 8) {
                         Image(systemName: "train.side.front.car")
                             .font(.system(size: 48))
-                            .foregroundStyle(.rfElectricBlue)
+                            .foregroundStyle(Color.rfElectricBlue)
 
                         Text("Choose Your Home Station")
                             .font(.system(size: 24, weight: .bold))
