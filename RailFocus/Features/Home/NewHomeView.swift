@@ -17,6 +17,9 @@ struct NewHomeView: View {
     @State private var showArrivalScreen = false
     @State private var showHomeStationPicker = false
     @State private var showDestinationPicker = false
+    @State private var showSeatSelection = false
+    @State private var pendingSeat: String?
+    @State private var pendingFocusTag: FocusTag?
 
     var body: some View {
         ZStack {
@@ -133,7 +136,7 @@ struct NewHomeView: View {
         .fullScreenCover(isPresented: $showDestinationPicker) {
             if let homeStation = appState.settings.homeStation {
                 DestinationPickerView(originStation: homeStation) { destination, connection, duration in
-                    // Create journey and show boarding ticket
+                    // Create journey and show seat selection
                     let journey = Journey(
                         origin: homeStation,
                         destination: destination,
@@ -141,6 +144,19 @@ struct NewHomeView: View {
                     )
                     appState.pendingJourney = journey
                     showDestinationPicker = false
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        showSeatSelection = true
+                    }
+                }
+            }
+        }
+        // Seat selection
+        .fullScreenCover(isPresented: $showSeatSelection) {
+            if let journey = appState.pendingJourney {
+                TrainSeatSelectionView(journey: journey) { seat, focusTag in
+                    pendingSeat = seat
+                    pendingFocusTag = focusTag
+                    showSeatSelection = false
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                         appState.showBoardingTicket = true
                     }
@@ -164,9 +180,16 @@ struct NewHomeView: View {
             set: { appState.showBoardingTicket = $0 }
         )) {
             if let journey = appState.pendingJourney {
-                BoardingTicketView(journey: journey) {
+                BoardingTicketView(
+                    journey: journey,
+                    seat: pendingSeat,
+                    focusTag: pendingFocusTag
+                ) {
                     appState.showBoardingTicket = false
                     appState.startJourney(journey)
+                    // Clear pending seat data
+                    pendingSeat = nil
+                    pendingFocusTag = nil
                 }
             }
         }
