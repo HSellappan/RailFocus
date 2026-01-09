@@ -234,12 +234,12 @@ private struct StationRow: View {
 
     private func railLineColor(_ line: String) -> Color {
         switch line {
-        case "TGV": return Color(hex: "9B2335") ?? .red
-        case "ICE": return Color(hex: "EC0016") ?? .red
-        case "Eurostar": return Color(hex: "FFCD00") ?? .yellow
-        case "AVE": return Color(hex: "6B2C91") ?? .purple
-        case "Frecciarossa": return Color(hex: "C8102E") ?? .red
-        case "Thalys": return Color(hex: "9B2335") ?? .red
+        case "TGV": return Color(hex: "9B2335")
+        case "ICE": return Color(hex: "EC0016")
+        case "Eurostar": return Color(hex: "FFCD00")
+        case "AVE": return Color(hex: "6B2C91")
+        case "Frecciarossa": return Color(hex: "C8102E")
+        case "Thalys": return Color(hex: "9B2335")
         case "SBB": return Color.red
         case "ÖBB": return Color.red
         default: return .gray

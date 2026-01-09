@@ -303,12 +303,12 @@ struct FocusTagChip: View {
 
     private var tagColor: Color {
         switch tag {
-        case .work: return Color(hex: "9B7ED9") ?? .purple
-        case .study: return Color(hex: "7DD3A8") ?? .green
-        case .coding: return Color(hex: "64B5F6") ?? .blue
-        case .writing: return Color(hex: "D4A574") ?? .orange
-        case .admin: return Color(hex: "C490D1") ?? .pink
-        case .personal: return Color(hex: "7DD3C0") ?? .teal
+        case .work: return Color(hex: "9B7ED9")
+        case .study: return Color(hex: "7DD3A8")
+        case .coding: return Color(hex: "64B5F6")
+        case .writing: return Color(hex: "D4A574")
+        case .admin: return Color(hex: "C490D1")
+        case .personal: return Color(hex: "7DD3C0")
         }
     }
 

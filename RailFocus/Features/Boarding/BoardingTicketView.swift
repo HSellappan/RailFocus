@@ -189,7 +189,7 @@ struct BoardingTicketView: View {
             HStack(spacing: 4) {
                 ForEach(0..<40, id: \.self) { _ in
                     Rectangle()
-                        .fill(Color(hex: "C4A574")?.opacity(0.5) ?? Color.orange.opacity(0.5))
+                        .fill(Color(hex: "C4A574").opacity(0.5))
                         .frame(width: 6, height: 2)
                 }
             }

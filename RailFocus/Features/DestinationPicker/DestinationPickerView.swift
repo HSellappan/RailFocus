@@ -102,7 +102,7 @@ struct DestinationPickerView: View {
             .padding(.vertical, 10)
             .background(
                 Capsule()
-                    .fill(Color(hex: railLineColor(originStation.railLine)) ?? .yellow)
+                    .fill(Color(hex: railLineColor(originStation.railLine)))
             )
 
             Spacer()
@@ -403,7 +403,7 @@ struct OriginStationMarker: View {
             .padding(.vertical, 6)
             .background(
                 Capsule()
-                    .fill(Color(hex: "FFCD00") ?? .yellow)
+                    .fill(Color(hex: "FFCD00"))
             )
 
             // Connector dot
@@ -412,7 +412,7 @@ struct OriginStationMarker: View {
                 .frame(width: 10, height: 10)
                 .overlay(
                     Circle()
-                        .stroke(Color(hex: "FFCD00") ?? .yellow, lineWidth: 3)
+                        .stroke(Color(hex: "FFCD00"), lineWidth: 3)
                 )
         }
     }
@@ -441,7 +441,7 @@ struct DestinationStationMarker: View {
                 .padding(.vertical, 6)
                 .background(
                     Capsule()
-                        .fill(isSelected ? Color.white : Color(hex: "FFCD00")?.opacity(0.9) ?? .yellow)
+                        .fill(isSelected ? Color.white : Color(hex: "FFCD00").opacity(0.9))
                 )
 
                 // Connection indicator
@@ -512,7 +512,7 @@ struct DestinationCard: View {
                 .padding(.vertical, 6)
                 .background(
                     Capsule()
-                        .fill(Color(hex: railLineColor) ?? .yellow)
+                        .fill(Color(hex: railLineColor))
                 )
 
                 // City name
