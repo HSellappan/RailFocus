@@ -184,17 +184,16 @@ struct TrainSeatSelectionView: View {
 
     // MARK: - Seat Button
 
+    @ViewBuilder
     private func seatButton(row: Int, col: String) -> some View {
         let seatId = String(format: "%02d%@", row, col)
         let isSelected = selectedSeat == seatId
         let isOccupied = occupiedSeats.contains(seatId)
 
-        return Button {
+        Button {
             if !isOccupied {
-                withAnimation {
-                    selectedSeat = seatId
-                    showTaskPicker = true
-                }
+                selectedSeat = seatId
+                showTaskPicker = true
             }
         } label: {
             RoundedRectangle(cornerRadius: 6)
@@ -211,9 +210,10 @@ struct TrainSeatSelectionView: View {
                             lineWidth: isSelected ? 2 : 1
                         )
                 )
+                .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
         .disabled(isOccupied)
-        .frame(maxWidth: .infinity)
     }
 
     // Simulated occupied seats
@@ -236,14 +236,14 @@ struct TrainSeatSelectionView: View {
                 .font(.system(size: 18, weight: .semibold))
                 .foregroundStyle(.white)
 
-            // Task options
+            // Task options using FocusTag directly
             FlowLayout(spacing: 10) {
-                ForEach(FocusTask.allCases) { task in
-                    TaskChip(
-                        task: task,
-                        isSelected: selectedTask?.rawValue == task.rawValue
+                ForEach(FocusTag.allCases) { tag in
+                    FocusTagChip(
+                        tag: tag,
+                        isSelected: selectedTask == tag
                     ) {
-                        selectedTask = FocusTag(rawValue: task.rawValue)
+                        selectedTask = tag
                     }
                 }
 
@@ -294,62 +294,41 @@ struct TrainSeatSelectionView: View {
     }
 }
 
-// MARK: - Focus Task
+// MARK: - Focus Tag Chip (uses FocusTag directly)
 
-enum FocusTask: String, CaseIterable, Identifiable {
-    case focus = "Focus"
-    case work = "Work"
-    case meditate = "Meditate"
-    case read = "Read"
-    case exercise = "Exercise"
-
-    var id: String { rawValue }
-
-    var icon: String {
-        switch self {
-        case .focus: return "sparkles"
-        case .work: return "laptopcomputer"
-        case .meditate: return "figure.mind.and.body"
-        case .read: return "book.fill"
-        case .exercise: return "figure.run"
-        }
-    }
-
-    var color: Color {
-        switch self {
-        case .focus: return Color(hex: "D4A574") ?? .orange
-        case .work: return Color(hex: "9B7ED9") ?? .purple
-        case .meditate: return Color(hex: "C490D1") ?? .pink
-        case .read: return Color(hex: "7DD3A8") ?? .green
-        case .exercise: return Color(hex: "7DD3C0") ?? .teal
-        }
-    }
-}
-
-// MARK: - Task Chip
-
-struct TaskChip: View {
-    let task: FocusTask
+struct FocusTagChip: View {
+    let tag: FocusTag
     let isSelected: Bool
     let action: () -> Void
+
+    private var tagColor: Color {
+        switch tag {
+        case .work: return Color(hex: "9B7ED9") ?? .purple
+        case .study: return Color(hex: "7DD3A8") ?? .green
+        case .coding: return Color(hex: "64B5F6") ?? .blue
+        case .writing: return Color(hex: "D4A574") ?? .orange
+        case .admin: return Color(hex: "C490D1") ?? .pink
+        case .personal: return Color(hex: "7DD3C0") ?? .teal
+        }
+    }
 
     var body: some View {
         Button(action: action) {
             HStack(spacing: 8) {
-                Image(systemName: task.icon)
+                Image(systemName: tag.icon)
                     .font(.system(size: 14))
-                Text(task.rawValue)
+                Text(tag.displayName)
                     .font(.system(size: 15, weight: .medium))
             }
-            .foregroundStyle(task.color)
+            .foregroundStyle(tagColor)
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
             .background(
                 Capsule()
-                    .fill(task.color.opacity(0.15))
+                    .fill(tagColor.opacity(0.15))
                     .overlay(
                         Capsule()
-                            .stroke(isSelected ? task.color : Color.clear, lineWidth: 2)
+                            .stroke(isSelected ? tagColor : Color.clear, lineWidth: 2)
                     )
             )
         }
