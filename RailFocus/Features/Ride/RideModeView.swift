@@ -192,7 +192,7 @@ struct RideModeView: View {
     // MARK: - Formatted Values
 
     private var formattedTimeRemaining: String {
-        let remaining = appState.timerService.remainingTime
+        let remaining = appState.timerService.timeRemaining
         let minutes = Int(remaining) / 60
         return "\(minutes) min"
     }
