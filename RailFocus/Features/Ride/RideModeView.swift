@@ -212,21 +212,51 @@ struct RideModeView: View {
         let origin = journey.originStation
         let destination = journey.destinationStation
 
-        // Try to find the actual rail route
-        if let route = TrainRoute.findRoute(from: origin, to: destination) {
-            // Get waypoints between origin and destination on this route
-            railPath = getRouteSegment(route: route, from: origin, to: destination)
+        // Try to find detailed route from EuropeanRailNetwork
+        if let detailedRoute = EuropeanRailNetwork.findDetailedRoute(from: origin, to: destination) {
+            // Use the detailed waypoints and interpolate between them
+            railPath = interpolateWaypoints(detailedRoute, pointsPerSegment: 20)
         } else {
-            // Fallback: create interpolated path along great circle
-            railPath = createInterpolatedPath(
-                from: origin.locationCoordinate,
-                to: destination.locationCoordinate,
-                segments: 100
-            )
+            // Fallback: try TrainRoute
+            if let route = TrainRoute.findRoute(from: origin, to: destination) {
+                railPath = getRouteSegment(route: route, from: origin, to: destination)
+            } else {
+                // Final fallback: direct path with many points
+                railPath = createInterpolatedPath(
+                    from: origin.locationCoordinate,
+                    to: destination.locationCoordinate,
+                    segments: 100
+                )
+            }
         }
 
         currentPosition = railPath.first
         updateCamera()
+    }
+
+    private func interpolateWaypoints(_ waypoints: [CLLocationCoordinate2D], pointsPerSegment: Int) -> [CLLocationCoordinate2D] {
+        guard waypoints.count >= 2 else { return waypoints }
+
+        var result: [CLLocationCoordinate2D] = []
+
+        for i in 0..<waypoints.count - 1 {
+            let start = waypoints[i]
+            let end = waypoints[i + 1]
+
+            for j in 0..<pointsPerSegment {
+                let fraction = Double(j) / Double(pointsPerSegment)
+                let lat = start.latitude + (end.latitude - start.latitude) * fraction
+                let lon = start.longitude + (end.longitude - start.longitude) * fraction
+                result.append(CLLocationCoordinate2D(latitude: lat, longitude: lon))
+            }
+        }
+
+        // Add final point
+        if let last = waypoints.last {
+            result.append(last)
+        }
+
+        return result
     }
 
     private func getRouteSegment(route: TrainRoute, from origin: Station, to destination: Station) -> [CLLocationCoordinate2D] {

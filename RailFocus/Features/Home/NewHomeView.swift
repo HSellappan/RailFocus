@@ -226,34 +226,31 @@ struct EuropeRailMapView: View {
     let mapStyle: RFMapStyle
 
     // Europe center (roughly central Europe)
-    private let europeCenter = CLLocationCoordinate2D(latitude: 48.5, longitude: 8.0)
-    private let europeDistance: Double = 4500000 // ~4500km view
+    private let europeCenter = CLLocationCoordinate2D(latitude: 50.0, longitude: 10.0)
+    private let europeDistance: Double = 5000000 // ~5000km view
 
     @State private var cameraPosition: MapCameraPosition = .automatic
     @State private var animatedTrainPosition: Double = 0
 
     var body: some View {
         Map(position: $cameraPosition) {
-            // Draw all rail routes
-            ForEach(TrainRoute.allRoutes) { route in
-                MapPolyline(coordinates: route.waypoints)
-                    .stroke(
-                        Color(hex: route.color).opacity(0.6),
-                        lineWidth: 2
-                    )
+            // Draw all European rail lines with clean blue color
+            ForEach(EuropeanRailNetwork.allLines) { line in
+                MapPolyline(coordinates: line.waypoints)
+                    .stroke(Color(hex: line.color).opacity(0.7), lineWidth: 2)
             }
 
-            // Station markers
+            // Station markers (small white dots)
             ForEach(Station.europeStations) { station in
                 Annotation("", coordinate: station.locationCoordinate) {
-                    StationMarkerView(station: station)
+                    SmallStationDot()
                 }
             }
 
             // Animated train on Eurostar route (demo)
-            let eurostarRoute = TrainRoute.eurostar
-            if eurostarRoute.waypoints.count >= 2 {
-                Annotation("", coordinate: interpolatedPosition(on: eurostarRoute.waypoints, progress: animatedTrainPosition)) {
+            let eurostarWaypoints = EuropeanRailNetwork.eurostar.waypoints
+            if eurostarWaypoints.count >= 2 {
+                Annotation("", coordinate: interpolatedPosition(on: eurostarWaypoints, progress: animatedTrainPosition)) {
                     ModernTrainIcon()
                 }
             }
@@ -310,6 +307,17 @@ struct EuropeRailMapView: View {
             latitude: start.latitude + (end.latitude - start.latitude) * localProgress,
             longitude: start.longitude + (end.longitude - start.longitude) * localProgress
         )
+    }
+}
+
+// MARK: - Small Station Dot (for clean map display)
+
+struct SmallStationDot: View {
+    var body: some View {
+        Circle()
+            .fill(Color.white)
+            .frame(width: 6, height: 6)
+            .shadow(color: Color.black.opacity(0.3), radius: 2)
     }
 }
 
