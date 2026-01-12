@@ -17,8 +17,8 @@ struct RideModeView: View {
     @State private var cameraPosition: MapCameraPosition = .automatic
     @State private var trainHeading: Double = 0
     @State private var isSoundEnabled = true
-    @State private var smoothProgress: Double = 0
-    @State private var updateTimer: Timer?
+    @State private var displayLink: CADisplayLink?
+    @State private var animatedProgress: Double = 0
 
     var body: some View {
         if let journey = appState.activeJourney {
@@ -44,14 +44,14 @@ struct RideModeView: View {
             .preferredColorScheme(.dark)
             .onAppear {
                 setupRailPath()
-                startContinuousUpdates()
+                startDisplayLink()
             }
             .onDisappear {
-                stopContinuousUpdates()
+                stopDisplayLink()
             }
             .onChange(of: appState.timerService.state) { _, newState in
                 if newState == .completed {
-                    stopContinuousUpdates()
+                    stopDisplayLink()
                     appState.completeJourney()
                 }
             }
@@ -61,7 +61,7 @@ struct RideModeView: View {
                 titleVisibility: .visible
             ) {
                 Button("End Journey", role: .destructive) {
-                    stopContinuousUpdates()
+                    stopDisplayLink()
                     appState.interruptJourney()
                 }
                 Button("Continue", role: .cancel) {}
@@ -73,28 +73,32 @@ struct RideModeView: View {
         }
     }
 
-    // MARK: - Continuous Updates
+    // MARK: - Display Link for 60fps Updates
 
-    private func startContinuousUpdates() {
-        // Update train position 20 times per second for smooth movement
-        updateTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { _ in
-            updateTrainPositionSmooth()
-        }
+    private func startDisplayLink() {
+        let link = CADisplayLink(target: DisplayLinkTarget { [self] in
+            self.updateFrame()
+        }, selector: #selector(DisplayLinkTarget.update))
+        link.add(to: .main, forMode: .common)
+        displayLink = link
     }
 
-    private func stopContinuousUpdates() {
-        updateTimer?.invalidate()
-        updateTimer = nil
+    private func stopDisplayLink() {
+        displayLink?.invalidate()
+        displayLink = nil
     }
 
-    private func updateTrainPositionSmooth() {
+    private func updateFrame() {
         let targetProgress = appState.timerService.progress
 
-        // Smoothly interpolate towards target progress
-        let smoothingFactor = 0.15
-        smoothProgress += (targetProgress - smoothProgress) * smoothingFactor
+        // Smooth exponential interpolation for fluid movement
+        let smoothingSpeed = 0.08
+        animatedProgress += (targetProgress - animatedProgress) * smoothingSpeed
 
-        updateTrainPosition(progress: smoothProgress)
+        // Clamp to prevent overshooting
+        animatedProgress = min(max(animatedProgress, 0), 1)
+
+        updateTrainPosition(progress: animatedProgress)
     }
 
     // MARK: - No Journey View
@@ -122,7 +126,7 @@ struct RideModeView: View {
             // Rail path line (thin route line like flight tracker)
             if railPath.count >= 2 {
                 MapPolyline(coordinates: railPath)
-                    .stroke(Color(hex: "FF3B5C").opacity(0.7), lineWidth: 2)
+                    .stroke(Color(hex: "FF3B5C").opacity(0.8), lineWidth: 2)
             }
 
             // Origin station marker
@@ -131,14 +135,22 @@ struct RideModeView: View {
                 Annotation("", coordinate: journey.originStation.locationCoordinate) {
                     Circle()
                         .fill(Color.white)
-                        .frame(width: 8, height: 8)
+                        .frame(width: 10, height: 10)
+                        .overlay(
+                            Circle()
+                                .stroke(Color.white.opacity(0.5), lineWidth: 2)
+                        )
                 }
 
                 // Small dot at destination
                 Annotation("", coordinate: journey.destinationStation.locationCoordinate) {
                     Circle()
-                        .fill(Color.white.opacity(0.5))
-                        .frame(width: 8, height: 8)
+                        .fill(Color.white.opacity(0.7))
+                        .frame(width: 10, height: 10)
+                        .overlay(
+                            Circle()
+                                .stroke(Color.white.opacity(0.3), lineWidth: 2)
+                        )
                 }
 
                 // Train marker (moves along the route)
@@ -164,7 +176,7 @@ struct RideModeView: View {
                 )
 
                 HStack(spacing: 4) {
-                    Image(systemName: "train.side.front.car")
+                    Image(systemName: "tram.fill")
                         .font(.system(size: 10, weight: .bold))
                     Text(journey.originStation.code)
                         .font(.system(size: 12, weight: .bold))
@@ -274,9 +286,9 @@ struct RideModeView: View {
             // Time Remaining (left side)
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 4) {
-                    Image(systemName: "applelogo")
+                    Image(systemName: "map.fill")
                         .font(.system(size: 10))
-                    Text("Maps")
+                    Text("Rail")
                         .font(.system(size: 11))
                 }
                 .foregroundStyle(Color.white.opacity(0.5))
@@ -333,40 +345,46 @@ struct RideModeView: View {
 
         // Try to find detailed route from EuropeanRailNetwork
         if let detailedRoute = EuropeanRailNetwork.findDetailedRoute(from: origin, to: destination) {
-            // Use the detailed waypoints and interpolate between them
-            railPath = interpolateWaypoints(detailedRoute, pointsPerSegment: 20)
+            // Use the detailed waypoints and interpolate for smooth curves
+            railPath = createSmoothPath(from: detailedRoute)
+            print("Found rail route with \(detailedRoute.count) waypoints -> \(railPath.count) interpolated points")
         } else {
             // Fallback: try TrainRoute
             if let route = TrainRoute.findRoute(from: origin, to: destination) {
-                railPath = getRouteSegment(route: route, from: origin, to: destination)
+                let stationCoords = getRouteCoordinates(route: route, from: origin, to: destination)
+                railPath = createSmoothPath(from: stationCoords)
+                print("Using TrainRoute with \(stationCoords.count) stations -> \(railPath.count) points")
             } else {
-                // Final fallback: direct path with many points
-                railPath = createInterpolatedPath(
+                // Final fallback: create curved path between stations
+                railPath = createCurvedPath(
                     from: origin.locationCoordinate,
-                    to: destination.locationCoordinate,
-                    segments: 100
+                    to: destination.locationCoordinate
                 )
+                print("Using fallback curved path with \(railPath.count) points")
             }
         }
 
         currentPosition = railPath.first
-        smoothProgress = 0
+        animatedProgress = 0
         updateCamera()
     }
 
-    private func interpolateWaypoints(_ waypoints: [CLLocationCoordinate2D], pointsPerSegment: Int) -> [CLLocationCoordinate2D] {
+    private func createSmoothPath(from waypoints: [CLLocationCoordinate2D]) -> [CLLocationCoordinate2D] {
         guard waypoints.count >= 2 else { return waypoints }
 
         var result: [CLLocationCoordinate2D] = []
+        let pointsPerSegment = 30 // More points for smoother movement
 
         for i in 0..<waypoints.count - 1 {
             let start = waypoints[i]
             let end = waypoints[i + 1]
 
             for j in 0..<pointsPerSegment {
-                let fraction = Double(j) / Double(pointsPerSegment)
-                let lat = start.latitude + (end.latitude - start.latitude) * fraction
-                let lon = start.longitude + (end.longitude - start.longitude) * fraction
+                let t = Double(j) / Double(pointsPerSegment)
+
+                // Use smooth interpolation
+                let lat = start.latitude + (end.latitude - start.latitude) * t
+                let lon = start.longitude + (end.longitude - start.longitude) * t
                 result.append(CLLocationCoordinate2D(latitude: lat, longitude: lon))
             }
         }
@@ -379,14 +397,10 @@ struct RideModeView: View {
         return result
     }
 
-    private func getRouteSegment(route: TrainRoute, from origin: Station, to destination: Station) -> [CLLocationCoordinate2D] {
+    private func getRouteCoordinates(route: TrainRoute, from origin: Station, to destination: Station) -> [CLLocationCoordinate2D] {
         guard let originIndex = route.stations.firstIndex(of: origin),
               let destIndex = route.stations.firstIndex(of: destination) else {
-            return createInterpolatedPath(
-                from: origin.locationCoordinate,
-                to: destination.locationCoordinate,
-                segments: 100
-            )
+            return [origin.locationCoordinate, destination.locationCoordinate]
         }
 
         let startIndex = min(originIndex, destIndex)
@@ -396,33 +410,36 @@ struct RideModeView: View {
         // If traveling in reverse, reverse the segment
         let orderedStations = originIndex < destIndex ? stationSegment : stationSegment.reversed()
 
-        // Create detailed path with interpolation between each station pair
-        var detailedPath: [CLLocationCoordinate2D] = []
-        for i in 0..<orderedStations.count - 1 {
-            let from = orderedStations[i].locationCoordinate
-            let to = orderedStations[i + 1].locationCoordinate
-            let segment = createInterpolatedPath(from: from, to: to, segments: 30)
-            if i == 0 {
-                detailedPath.append(contentsOf: segment)
-            } else {
-                detailedPath.append(contentsOf: segment.dropFirst())
-            }
-        }
-
-        return detailedPath
+        return orderedStations.map { $0.locationCoordinate }
     }
 
-    private func createInterpolatedPath(
+    private func createCurvedPath(
         from start: CLLocationCoordinate2D,
-        to end: CLLocationCoordinate2D,
-        segments: Int
+        to end: CLLocationCoordinate2D
     ) -> [CLLocationCoordinate2D] {
         var path: [CLLocationCoordinate2D] = []
+        let segments = 150
+
+        // Calculate a slight curve offset (perpendicular to the line)
+        let midLat = (start.latitude + end.latitude) / 2
+        let midLon = (start.longitude + end.longitude) / 2
+
+        // Offset the midpoint slightly to create a natural rail curve
+        let deltaLat = end.latitude - start.latitude
+        let deltaLon = end.longitude - start.longitude
+        let perpLat = -deltaLon * 0.1 // Small perpendicular offset
+        let perpLon = deltaLat * 0.1
+
+        let controlLat = midLat + perpLat
+        let controlLon = midLon + perpLon
 
         for i in 0...segments {
-            let fraction = Double(i) / Double(segments)
-            let lat = start.latitude + (end.latitude - start.latitude) * fraction
-            let lon = start.longitude + (end.longitude - start.longitude) * fraction
+            let t = Double(i) / Double(segments)
+
+            // Quadratic Bezier curve
+            let lat = pow(1-t, 2) * start.latitude + 2 * (1-t) * t * controlLat + pow(t, 2) * end.latitude
+            let lon = pow(1-t, 2) * start.longitude + 2 * (1-t) * t * controlLon + pow(t, 2) * end.longitude
+
             path.append(CLLocationCoordinate2D(latitude: lat, longitude: lon))
         }
 
@@ -444,7 +461,7 @@ struct RideModeView: View {
         let maxDiff = max(latDiff, lonDiff)
 
         // Adjust camera distance based on route length
-        let distance = max(maxDiff * 200000, 500000)
+        let distance = max(maxDiff * 180000, 400000)
 
         cameraPosition = .camera(
             MapCamera(
@@ -459,24 +476,24 @@ struct RideModeView: View {
     private func updateTrainPosition(progress: Double) {
         guard railPath.count > 1 else { return }
 
-        // Calculate exact position with interpolation between waypoints
+        // Calculate exact position with sub-waypoint interpolation
         let exactIndex = Double(railPath.count - 1) * progress
-        let lowerIndex = Int(exactIndex)
-        let upperIndex = min(lowerIndex + 1, railPath.count - 1)
+        let lowerIndex = max(0, min(Int(exactIndex), railPath.count - 2))
+        let upperIndex = lowerIndex + 1
         let fraction = exactIndex - Double(lowerIndex)
 
         let lowerCoord = railPath[lowerIndex]
         let upperCoord = railPath[upperIndex]
 
-        // Interpolate position between waypoints for smoother movement
+        // Smooth interpolation between waypoints
         let interpolatedLat = lowerCoord.latitude + (upperCoord.latitude - lowerCoord.latitude) * fraction
         let interpolatedLon = lowerCoord.longitude + (upperCoord.longitude - lowerCoord.longitude) * fraction
         let newPosition = CLLocationCoordinate2D(latitude: interpolatedLat, longitude: interpolatedLon)
 
-        // Calculate heading towards next waypoint
-        if upperIndex < railPath.count {
-            trainHeading = calculateHeading(from: newPosition, to: upperCoord)
-        }
+        // Calculate heading - look ahead for smoother direction
+        let lookAheadIndex = min(upperIndex + 2, railPath.count - 1)
+        let lookAheadCoord = railPath[lookAheadIndex]
+        trainHeading = calculateHeading(from: newPosition, to: lookAheadCoord)
 
         currentPosition = newPosition
     }
@@ -485,35 +502,57 @@ struct RideModeView: View {
         let deltaLon = to.longitude - from.longitude
         let deltaLat = to.latitude - from.latitude
 
+        // atan2 gives angle from positive Y axis (north), clockwise
         let angle = atan2(deltaLon, deltaLat) * 180 / .pi
         return angle
     }
 }
 
-// MARK: - High Speed Train Icon (Bird's Eye View)
+// MARK: - Display Link Target
+
+private class DisplayLinkTarget {
+    private let callback: () -> Void
+
+    init(callback: @escaping () -> Void) {
+        self.callback = callback
+    }
+
+    @objc func update() {
+        callback()
+    }
+}
+
+// MARK: - High Speed Train Icon (Bird's Eye View - Proper Orientation)
 
 struct HighSpeedTrainIcon: View {
     let heading: Double
 
     var body: some View {
         ZStack {
-            // Glow effect
+            // Glow/shadow effect
             Ellipse()
-                .fill(Color.white.opacity(0.3))
-                .frame(width: 40, height: 20)
-                .blur(radius: 6)
+                .fill(
+                    RadialGradient(
+                        colors: [Color.white.opacity(0.4), Color.clear],
+                        center: .center,
+                        startRadius: 0,
+                        endRadius: 20
+                    )
+                )
+                .frame(width: 50, height: 25)
 
             // Train body (bullet train shape from above)
+            // Nose points UP (north) when heading is 0
             BulletTrainShape()
                 .fill(Color.white)
-                .frame(width: 32, height: 14)
-                .shadow(color: .black.opacity(0.5), radius: 3, x: 0, y: 2)
+                .frame(width: 12, height: 28)
+                .shadow(color: .black.opacity(0.6), radius: 4, x: 0, y: 2)
         }
         .rotationEffect(.degrees(heading))
     }
 }
 
-// MARK: - Bullet Train Shape (Top-down view)
+// MARK: - Bullet Train Shape (Top-down view - nose points UP)
 
 struct BulletTrainShape: Shape {
     func path(in rect: CGRect) -> Path {
@@ -523,37 +562,39 @@ struct BulletTrainShape: Shape {
         let height = rect.height
 
         // Streamlined bullet train from above
-        // Front nose (pointed)
-        path.move(to: CGPoint(x: width, y: height / 2))
+        // Nose at TOP (y = 0), tail at BOTTOM (y = height)
 
-        // Top side curve from nose to body
+        // Start at nose tip (top center)
+        path.move(to: CGPoint(x: width / 2, y: 0))
+
+        // Right side curve from nose to body
         path.addQuadCurve(
-            to: CGPoint(x: width * 0.7, y: 0),
-            control: CGPoint(x: width * 0.9, y: height * 0.15)
+            to: CGPoint(x: width, y: height * 0.25),
+            control: CGPoint(x: width * 0.85, y: height * 0.08)
         )
 
-        // Top straight body
-        path.addLine(to: CGPoint(x: width * 0.15, y: 0))
+        // Right straight body
+        path.addLine(to: CGPoint(x: width, y: height * 0.85))
 
-        // Rear curve (top)
+        // Right rear curve
         path.addQuadCurve(
-            to: CGPoint(x: 0, y: height / 2),
-            control: CGPoint(x: 0, y: 0)
+            to: CGPoint(x: width / 2, y: height),
+            control: CGPoint(x: width, y: height)
         )
 
-        // Rear curve (bottom)
+        // Left rear curve
         path.addQuadCurve(
-            to: CGPoint(x: width * 0.15, y: height),
+            to: CGPoint(x: 0, y: height * 0.85),
             control: CGPoint(x: 0, y: height)
         )
 
-        // Bottom straight body
-        path.addLine(to: CGPoint(x: width * 0.7, y: height))
+        // Left straight body
+        path.addLine(to: CGPoint(x: 0, y: height * 0.25))
 
-        // Bottom side curve from body to nose
+        // Left side curve from body to nose
         path.addQuadCurve(
-            to: CGPoint(x: width, y: height / 2),
-            control: CGPoint(x: width * 0.9, y: height * 0.85)
+            to: CGPoint(x: width / 2, y: 0),
+            control: CGPoint(x: width * 0.15, y: height * 0.08)
         )
 
         path.closeSubpath()
