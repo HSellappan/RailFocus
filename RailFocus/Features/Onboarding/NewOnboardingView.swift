@@ -314,8 +314,10 @@ struct FinalOnboardingPage: View {
 
     var body: some View {
         ZStack {
-            // Full globe map
-            Map(position: $cameraPosition) {}
+            // Full globe map with European rail routes
+            Map(position: $cameraPosition) {
+                EuropeanRailRoutesContent.standard
+            }
                 .mapStyle(.imagery(elevation: .realistic))
                 .ignoresSafeArea()
                 .allowsHitTesting(false)
@@ -406,7 +408,9 @@ struct GlobeBackgroundView: View {
         ZStack {
             Color.black.ignoresSafeArea()
 
-            Map(position: $cameraPosition) {}
+            Map(position: $cameraPosition) {
+                EuropeanRailRoutesContent.standard
+            }
                 .mapStyle(.imagery(elevation: .realistic))
                 .allowsHitTesting(false)
                 .mask(

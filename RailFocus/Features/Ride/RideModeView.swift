@@ -123,10 +123,13 @@ struct RideModeView: View {
 
     private var railMapView: some View {
         Map(position: $cameraPosition, interactionModes: [.pan, .zoom]) {
-            // Rail path line (thin route line like flight tracker)
+            // Background: All European rail routes
+            EuropeanRailRoutesContent.whiteLine
+
+            // Active journey rail path (highlighted)
             if railPath.count >= 2 {
                 MapPolyline(coordinates: railPath)
-                    .stroke(Color(hex: "FF3B5C").opacity(0.8), lineWidth: 2)
+                    .stroke(Color(hex: "FF3B5C").opacity(0.8), lineWidth: 3)
             }
 
             // Origin station marker

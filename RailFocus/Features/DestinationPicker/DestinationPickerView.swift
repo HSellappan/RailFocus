@@ -126,12 +126,15 @@ struct DestinationPickerView: View {
 
     private var destinationMap: some View {
         Map(position: $cameraPosition) {
+            // Background: All European rail routes
+            EuropeanRailRoutesContent.subtle
+
             // Origin station marker
             Annotation("", coordinate: originStation.locationCoordinate) {
                 OriginStationMarker(station: originStation)
             }
 
-            // Route lines to all destinations
+            // Route lines to available destinations (highlighted)
             ForEach(availableDestinations, id: \.station.id) { dest in
                 MapPolyline(coordinates: [
                     originStation.locationCoordinate,
@@ -140,8 +143,8 @@ struct DestinationPickerView: View {
                 .stroke(
                     selectedDestination?.id == dest.station.id
                         ? Color.white
-                        : Color.white.opacity(0.3),
-                    lineWidth: selectedDestination?.id == dest.station.id ? 3 : 1.5
+                        : Color.white.opacity(0.5),
+                    lineWidth: selectedDestination?.id == dest.station.id ? 3 : 2
                 )
             }
 
