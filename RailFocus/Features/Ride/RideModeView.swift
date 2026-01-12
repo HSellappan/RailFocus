@@ -2,13 +2,53 @@
 //  RideModeView.swift
 //  RailFocus
 //
-//  Full-screen map view showing train journey progress (flight tracker style)
+//  Full-screen immersive focus session view.
+//  Now integrates with JourneySessionController for enhanced experience.
 //
 
 import SwiftUI
 import MapKit
 
 struct RideModeView: View {
+    @Environment(\.appState) private var appState
+
+    var body: some View {
+        if let journey = appState.activeJourney {
+            TrainFocusSessionView(
+                journey: journey,
+                onComplete: {
+                    appState.completeJourney()
+                },
+                onCancel: {
+                    appState.interruptJourney()
+                }
+            )
+        } else {
+            // Fallback for no active journey
+            noJourneyView
+        }
+    }
+
+    private var noJourneyView: some View {
+        ZStack {
+            Color.black.ignoresSafeArea()
+
+            VStack(spacing: 16) {
+                Image(systemName: "train.side.front.car")
+                    .font(.system(size: 48))
+                    .foregroundStyle(Color.white.opacity(0.3))
+
+                Text("No active journey")
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundStyle(Color.white.opacity(0.6))
+            }
+        }
+    }
+}
+
+// MARK: - Legacy Ride Mode View (Map-based)
+
+struct LegacyRideModeView: View {
     @Environment(\.appState) private var appState
     @State private var showEndConfirmation = false
     @State private var railPath: [CLLocationCoordinate2D] = []
@@ -72,18 +112,18 @@ struct RideModeView: View {
             // Origin station marker
             if let journey = appState.activeJourney {
                 Annotation("", coordinate: journey.originStation.locationCoordinate) {
-                    StationDot(isOrigin: true)
+                    LegacyStationDot(isOrigin: true)
                 }
 
                 // Destination station marker
                 Annotation("", coordinate: journey.destinationStation.locationCoordinate) {
-                    StationDot(isOrigin: false)
+                    LegacyStationDot(isOrigin: false)
                 }
 
                 // Train marker (moves along the route)
                 if let position = currentPosition {
                     Annotation("", coordinate: position) {
-                        TrainMarkerView(heading: trainHeading)
+                        LegacyTrainMarkerView(heading: trainHeading)
                     }
                 }
             }
@@ -362,9 +402,9 @@ struct RideModeView: View {
     }
 }
 
-// MARK: - Train Marker View
+// MARK: - Legacy Train Marker View
 
-struct TrainMarkerView: View {
+struct LegacyTrainMarkerView: View {
     let heading: Double
 
     var body: some View {
@@ -385,9 +425,9 @@ struct TrainMarkerView: View {
     }
 }
 
-// MARK: - Station Dot
+// MARK: - Legacy Station Dot
 
-struct StationDot: View {
+struct LegacyStationDot: View {
     let isOrigin: Bool
 
     var body: some View {
