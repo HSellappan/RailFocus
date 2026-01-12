@@ -124,6 +124,7 @@ struct EuropeanRailNetwork {
     )
 
     // MARK: - TGV Sud-Est (Paris - Lyon - Marseille - Nice)
+    // Detailed waypoints following the actual LGV Sud-Est high-speed rail corridor
 
     static let tgvSudEst = RailLine(
         name: "TGV Sud-Est",
@@ -131,133 +132,302 @@ struct EuropeanRailNetwork {
         waypoints: [
             // Paris Gare de Lyon
             RailLine.coord(48.8443, 2.3743),
-            // South of Paris
-            RailLine.coord(48.4000, 2.7000),
-            // Dijon area
-            RailLine.coord(47.3200, 5.0400),
-            // Mâcon
-            RailLine.coord(46.3000, 4.8300),
+            // Leaving Paris - Villeneuve-Saint-Georges
+            RailLine.coord(48.7331, 2.4486),
+            // Lieusaint area
+            RailLine.coord(48.6308, 2.5472),
+            // Melun area
+            RailLine.coord(48.5400, 2.6600),
+            // Near Montereau
+            RailLine.coord(48.3833, 2.9500),
+            // Near Sens
+            RailLine.coord(48.1972, 3.2833),
+            // Near Joigny
+            RailLine.coord(47.9833, 3.4000),
+            // Near Auxerre (LGV passes east)
+            RailLine.coord(47.7500, 3.6500),
+            // Near Tonnerre
+            RailLine.coord(47.8550, 3.9750),
+            // Near Montbard
+            RailLine.coord(47.6250, 4.3375),
+            // LGV bypasses Dijon to the east
+            RailLine.coord(47.3500, 5.1500),
+            // Near Beaune
+            RailLine.coord(47.0250, 4.8400),
+            // Near Chalon-sur-Saône
+            RailLine.coord(46.7833, 4.8500),
+            // Mâcon-Loché TGV station
+            RailLine.coord(46.2917, 4.7917),
+            // Approaching Lyon
+            RailLine.coord(45.9000, 4.8200),
             // Lyon Part-Dieu
             RailLine.coord(45.7606, 4.8594),
-            // Valence
+            // Lyon to Valence - Vienne
+            RailLine.coord(45.5250, 4.8750),
+            // Near Tain-l'Hermitage
+            RailLine.coord(45.0667, 4.8500),
+            // Valence TGV
             RailLine.coord(44.9250, 4.9000),
-            // Avignon
-            RailLine.coord(43.9420, 4.8060),
-            // Marseille
+            // Near Montélimar
+            RailLine.coord(44.5580, 4.7500),
+            // Near Orange
+            RailLine.coord(44.1380, 4.8100),
+            // Avignon TGV
+            RailLine.coord(43.9220, 4.7860),
+            // Near Nîmes
+            RailLine.coord(43.8330, 4.3600),
+            // Approaching Marseille
+            RailLine.coord(43.4500, 5.2000),
+            // Marseille Saint-Charles
             RailLine.coord(43.3028, 5.3803),
+            // Near Aubagne
+            RailLine.coord(43.2950, 5.5700),
             // Toulon
             RailLine.coord(43.1230, 5.9280),
-            // Nice
+            // Near Hyères
+            RailLine.coord(43.1200, 6.1300),
+            // Near Fréjus
+            RailLine.coord(43.4330, 6.7370),
+            // Cannes
+            RailLine.coord(43.5510, 7.0128),
+            // Antibes
+            RailLine.coord(43.5808, 7.1239),
+            // Nice-Ville
             RailLine.coord(43.7044, 7.2619),
         ]
     )
 
     // MARK: - TGV Atlantique (Paris - Bordeaux)
+    // Detailed waypoints following the LGV Atlantique and LGV Sud Europe Atlantique
 
     static let tgvAtlantique = RailLine(
         name: "TGV Atlantique",
         color: "4A90D9",
         waypoints: [
-            // Paris Montparnasse area
-            RailLine.coord(48.8400, 2.3200),
-            // Chartres area
-            RailLine.coord(48.4500, 1.5000),
-            // Tours
+            // Paris Montparnasse
+            RailLine.coord(48.8414, 2.3187),
+            // Massy TGV
+            RailLine.coord(48.7253, 2.2608),
+            // Near Artenay
+            RailLine.coord(48.0833, 1.8833),
+            // Near Vendôme
+            RailLine.coord(47.7928, 1.0656),
+            // Near Tours (Saint-Pierre-des-Corps)
+            RailLine.coord(47.3856, 0.7250),
+            // Tours junction
             RailLine.coord(47.3900, 0.6900),
-            // Poitiers
-            RailLine.coord(46.5800, 0.3400),
+            // Near Châtellerault
+            RailLine.coord(46.8167, 0.5500),
+            // Poitiers (Futuroscope TGV)
+            RailLine.coord(46.6667, 0.3667),
+            // Near Ruffec
+            RailLine.coord(46.0250, 0.1917),
             // Angoulême
             RailLine.coord(45.6500, 0.1600),
-            // Bordeaux
+            // Near Coutras
+            RailLine.coord(45.0400, -0.1300),
+            // Near Libourne
+            RailLine.coord(44.9167, -0.2333),
+            // Bordeaux Saint-Jean
             RailLine.coord(44.8256, -0.5567),
         ]
     )
 
     // MARK: - TGV Est (Paris - Strasbourg)
+    // Detailed waypoints following the LGV Est européenne
 
     static let tgvEst = RailLine(
         name: "TGV Est",
         color: "4A90D9",
         waypoints: [
-            RailLine.coord(48.8767, 2.3590), // Paris Est
-            RailLine.coord(48.9500, 3.5000),
-            RailLine.coord(49.0500, 4.0300), // Reims area
-            RailLine.coord(48.9700, 5.5000),
-            RailLine.coord(48.7500, 6.1800), // Nancy
-            RailLine.coord(48.5850, 7.7350), // Strasbourg
+            // Paris Est
+            RailLine.coord(48.8767, 2.3590),
+            // Near Vaires-sur-Marne
+            RailLine.coord(48.8700, 2.6500),
+            // Near Meaux area
+            RailLine.coord(48.9600, 2.9000),
+            // Near Château-Thierry
+            RailLine.coord(49.0500, 3.4000),
+            // Champagne-Ardenne TGV
+            RailLine.coord(49.1167, 4.0167),
+            // Near Châlons-en-Champagne
+            RailLine.coord(48.9600, 4.3600),
+            // Near Vitry-le-François
+            RailLine.coord(48.7250, 4.5850),
+            // Near Bar-le-Duc
+            RailLine.coord(48.7750, 5.1600),
+            // Meuse TGV
+            RailLine.coord(48.9000, 5.3833),
+            // Lorraine TGV
+            RailLine.coord(48.9500, 6.1700),
+            // Near Nancy
+            RailLine.coord(48.6900, 6.1700),
+            // Near Sarrebourg
+            RailLine.coord(48.7350, 7.0550),
+            // Near Saverne
+            RailLine.coord(48.7400, 7.3600),
+            // Strasbourg
+            RailLine.coord(48.5850, 7.7350),
         ]
     )
 
     // MARK: - ICE North-South (Hamburg - Frankfurt)
+    // Detailed waypoints following the Hannover-Würzburg high-speed line
 
     static let iceNorthSouth = RailLine(
         name: "ICE North-South",
         color: "4A90D9",
         waypoints: [
-            // Hamburg
+            // Hamburg Hbf
             RailLine.coord(53.5530, 10.0069),
-            // Hannover
+            // Hamburg-Harburg
+            RailLine.coord(53.4560, 9.9920),
+            // Near Lüneburg
+            RailLine.coord(53.2500, 10.4000),
+            // Near Uelzen
+            RailLine.coord(52.9650, 10.5580),
+            // Near Celle
+            RailLine.coord(52.6250, 10.0800),
+            // Hannover Hbf
             RailLine.coord(52.3770, 9.7420),
+            // Near Alfeld
+            RailLine.coord(51.9850, 9.8250),
             // Göttingen
             RailLine.coord(51.5360, 9.9260),
-            // Kassel
-            RailLine.coord(51.3180, 9.4890),
+            // Near Nörten-Hardenberg
+            RailLine.coord(51.6250, 9.9350),
+            // Near Northeim
+            RailLine.coord(51.7050, 9.9990),
+            // Kassel-Wilhelmshöhe
+            RailLine.coord(51.3130, 9.4470),
+            // Near Bad Hersfeld
+            RailLine.coord(50.8680, 9.7080),
             // Fulda
             RailLine.coord(50.5540, 9.6840),
-            // Frankfurt
+            // Near Schlüchtern
+            RailLine.coord(50.3490, 9.5250),
+            // Near Hanau
+            RailLine.coord(50.1330, 8.9170),
+            // Frankfurt Hbf
             RailLine.coord(50.1072, 8.6638),
         ]
     )
 
     // MARK: - ICE East-West (Cologne - Berlin)
+    // Detailed waypoints following the Köln-Berlin high-speed line
 
     static let iceEastWest = RailLine(
         name: "ICE East-West",
         color: "4A90D9",
         waypoints: [
-            // Cologne
+            // Cologne Hbf
             RailLine.coord(50.9430, 6.9589),
-            // Düsseldorf
+            // Cologne-Deutz
+            RailLine.coord(50.9370, 6.9750),
+            // Near Leverkusen
+            RailLine.coord(51.0330, 6.9880),
+            // Düsseldorf Hbf
             RailLine.coord(51.2200, 6.7940),
-            // Essen/Dortmund area
-            RailLine.coord(51.5100, 7.4600),
-            // Hannover
+            // Duisburg Hbf
+            RailLine.coord(51.4300, 6.7760),
+            // Essen Hbf
+            RailLine.coord(51.4510, 7.0140),
+            // Bochum Hbf
+            RailLine.coord(51.4780, 7.2230),
+            // Dortmund Hbf
+            RailLine.coord(51.5180, 7.4590),
+            // Near Hamm
+            RailLine.coord(51.6780, 7.8070),
+            // Near Bielefeld
+            RailLine.coord(52.0290, 8.5320),
+            // Hannover Hbf
             RailLine.coord(52.3770, 9.7420),
-            // Wolfsburg
-            RailLine.coord(52.4230, 10.7870),
-            // Berlin
+            // Near Braunschweig
+            RailLine.coord(52.2530, 10.5400),
+            // Wolfsburg Hbf
+            RailLine.coord(52.4300, 10.7880),
+            // Near Stendal
+            RailLine.coord(52.6060, 11.8590),
+            // Berlin Spandau
+            RailLine.coord(52.5340, 13.1980),
+            // Berlin Hbf
             RailLine.coord(52.5250, 13.3694),
         ]
     )
 
     // MARK: - ICE Berlin-Munich
+    // Detailed waypoints following the VDE 8 high-speed line
 
     static let iceBerlinMunich = RailLine(
         name: "ICE Berlin-Munich",
         color: "4A90D9",
         waypoints: [
-            RailLine.coord(52.5250, 13.3694), // Berlin
-            RailLine.coord(51.7500, 12.3000), // Halle area
-            RailLine.coord(51.3400, 12.3800), // Leipzig
-            RailLine.coord(50.8300, 12.9200), // Chemnitz area
-            RailLine.coord(50.0800, 12.1300), // Hof
-            RailLine.coord(49.4500, 11.0800), // Nuremberg
-            RailLine.coord(48.7850, 11.4200), // Ingolstadt
-            RailLine.coord(48.1403, 11.5600), // Munich
+            // Berlin Hbf
+            RailLine.coord(52.5250, 13.3694),
+            // Berlin Südkreuz
+            RailLine.coord(52.4756, 13.3653),
+            // Near Jüterbog
+            RailLine.coord(51.9920, 13.0730),
+            // Near Lutherstadt Wittenberg
+            RailLine.coord(51.8670, 12.6490),
+            // Halle (Saale) Hbf
+            RailLine.coord(51.4770, 11.9870),
+            // Near Merseburg
+            RailLine.coord(51.3540, 11.9930),
+            // Leipzig Hbf
+            RailLine.coord(51.3450, 12.3820),
+            // Near Altenburg
+            RailLine.coord(50.9870, 12.4360),
+            // Near Zwickau
+            RailLine.coord(50.7180, 12.4960),
+            // Near Plauen
+            RailLine.coord(50.4960, 12.1340),
+            // Near Hof
+            RailLine.coord(50.3030, 11.9140),
+            // Near Bayreuth
+            RailLine.coord(49.9480, 11.5780),
+            // Nuremberg Hbf
+            RailLine.coord(49.4460, 11.0820),
+            // Near Allersberg
+            RailLine.coord(49.2510, 11.2360),
+            // Ingolstadt Hbf
+            RailLine.coord(48.8230, 11.4510),
+            // Near Petershausen
+            RailLine.coord(48.4060, 11.4720),
+            // Munich Hbf
+            RailLine.coord(48.1403, 11.5600),
         ]
     )
 
     // MARK: - ICE Rhine-Main (Frankfurt - Cologne)
+    // Detailed waypoints following the Rhine corridor
 
     static let iceRhineMain = RailLine(
         name: "ICE Rhine-Main",
         color: "4A90D9",
         waypoints: [
-            RailLine.coord(50.1072, 8.6638), // Frankfurt
-            RailLine.coord(50.0000, 8.2500), // Mainz
-            RailLine.coord(50.3600, 7.5900), // Koblenz
-            RailLine.coord(50.7300, 7.1000), // Bonn
-            RailLine.coord(50.9430, 6.9589), // Cologne
+            // Frankfurt Hbf
+            RailLine.coord(50.1072, 8.6638),
+            // Frankfurt Flughafen
+            RailLine.coord(50.0520, 8.5700),
+            // Mainz Hbf
+            RailLine.coord(50.0012, 8.2590),
+            // Near Bingen
+            RailLine.coord(49.9680, 7.8990),
+            // Near Bacharach
+            RailLine.coord(50.0570, 7.7710),
+            // Near St. Goar
+            RailLine.coord(50.1540, 7.7120),
+            // Koblenz Hbf
+            RailLine.coord(50.3530, 7.5980),
+            // Near Andernach
+            RailLine.coord(50.4390, 7.4040),
+            // Near Remagen
+            RailLine.coord(50.5740, 7.2290),
+            // Bonn Hbf
+            RailLine.coord(50.7320, 7.0970),
+            // Cologne Hbf
+            RailLine.coord(50.9430, 6.9589),
         ]
     )
 
@@ -304,34 +474,78 @@ struct EuropeanRailNetwork {
     )
 
     // MARK: - Frecciarossa North-South (Milan - Rome - Naples)
+    // Detailed waypoints following the Direttissima and TAV lines
 
     static let frecciarossaNorthSouth = RailLine(
         name: "Frecciarossa",
         color: "4A90D9",
         waypoints: [
-            RailLine.coord(45.4860, 9.2040), // Milan
-            RailLine.coord(45.0500, 9.7000), // Piacenza area
-            RailLine.coord(44.4940, 11.3430), // Bologna
-            RailLine.coord(43.7740, 11.2540), // Florence
-            RailLine.coord(43.0700, 11.7800), // South of Florence
-            RailLine.coord(42.4200, 12.1100), // Orvieto area
-            RailLine.coord(41.9010, 12.5020), // Rome
-            RailLine.coord(41.1390, 14.7800), // Caserta area
-            RailLine.coord(40.8530, 14.2720), // Naples
+            // Milano Centrale
+            RailLine.coord(45.4860, 9.2040),
+            // Near Lodi
+            RailLine.coord(45.3140, 9.5030),
+            // Near Piacenza
+            RailLine.coord(45.0520, 9.6930),
+            // Near Parma
+            RailLine.coord(44.8010, 10.3290),
+            // Near Reggio Emilia
+            RailLine.coord(44.6980, 10.6310),
+            // Near Modena
+            RailLine.coord(44.6460, 10.9250),
+            // Bologna Centrale
+            RailLine.coord(44.5060, 11.3430),
+            // Near Prato
+            RailLine.coord(43.8810, 11.0970),
+            // Firenze Santa Maria Novella
+            RailLine.coord(43.7760, 11.2480),
+            // Near Arezzo
+            RailLine.coord(43.4630, 11.8820),
+            // Near Chiusi
+            RailLine.coord(43.0170, 11.9480),
+            // Near Orvieto
+            RailLine.coord(42.7190, 12.1130),
+            // Near Orte
+            RailLine.coord(42.4600, 12.4560),
+            // Roma Termini
+            RailLine.coord(41.9010, 12.5020),
+            // Roma Tiburtina
+            RailLine.coord(41.9100, 12.5310),
+            // Near Frosinone
+            RailLine.coord(41.6400, 13.3500),
+            // Near Caserta
+            RailLine.coord(41.0750, 14.3330),
+            // Napoli Centrale
+            RailLine.coord(40.8530, 14.2720),
         ]
     )
 
     // MARK: - Frecciarossa Milan-Venice
+    // Detailed waypoints following the Milan-Venice line
 
     static let frecciarossaMilanVenice = RailLine(
         name: "Frecciarossa Venice",
         color: "4A90D9",
         waypoints: [
-            RailLine.coord(45.4860, 9.2040), // Milan
-            RailLine.coord(45.4600, 9.9200), // Brescia area
-            RailLine.coord(45.4400, 10.9900), // Verona
-            RailLine.coord(45.4100, 11.8800), // Padua
-            RailLine.coord(45.4410, 12.3200), // Venice
+            // Milano Centrale
+            RailLine.coord(45.4860, 9.2040),
+            // Near Treviglio
+            RailLine.coord(45.5210, 9.5940),
+            // Brescia
+            RailLine.coord(45.5310, 10.2130),
+            // Near Desenzano
+            RailLine.coord(45.4690, 10.5400),
+            // Near Peschiera
+            RailLine.coord(45.4400, 10.6910),
+            // Verona Porta Nuova
+            RailLine.coord(45.4290, 10.9820),
+            // Near Vicenza
+            RailLine.coord(45.5460, 11.5350),
+            // Padova
+            RailLine.coord(45.4180, 11.8800),
+            // Near Mestre
+            RailLine.coord(45.4820, 12.2380),
+            // Venezia Santa Lucia
+            RailLine.coord(45.4410, 12.3210),
         ]
     )
 
