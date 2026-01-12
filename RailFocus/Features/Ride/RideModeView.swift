@@ -2,8 +2,8 @@
 //  RideModeView.swift
 //  RailFocus
 //
-//  Full-screen immersive focus session view.
-//  Now integrates with JourneySessionController for enhanced experience.
+//  Full-screen immersive focus session view with map tracking.
+//  Train follows real rail routes with flight-tracker style UI.
 //
 
 import SwiftUI
@@ -11,23 +11,64 @@ import MapKit
 
 struct RideModeView: View {
     @Environment(\.appState) private var appState
+    @State private var showEndConfirmation = false
+    @State private var railPath: [CLLocationCoordinate2D] = []
+    @State private var currentPosition: CLLocationCoordinate2D?
+    @State private var cameraPosition: MapCameraPosition = .automatic
+    @State private var trainHeading: Double = 0
+    @State private var isSoundEnabled = true
 
     var body: some View {
         if let journey = appState.activeJourney {
-            TrainFocusSessionView(
-                journey: journey,
-                onComplete: {
+            ZStack {
+                // Full-screen satellite map
+                railMapView
+                    .ignoresSafeArea()
+
+                // Overlay controls
+                VStack {
+                    // Top bar with controls
+                    topControlsBar
+
+                    Spacer()
+
+                    // Bottom stats bar
+                    bottomStatsBar
+                }
+
+                // Origin station label (yellow badge like ORD in screenshot)
+                stationBadge
+            }
+            .preferredColorScheme(.dark)
+            .onAppear {
+                setupRailPath()
+            }
+            .onChange(of: appState.timerService.progress) { _, newValue in
+                updateTrainPosition(progress: newValue)
+            }
+            .onChange(of: appState.timerService.state) { _, newState in
+                if newState == .completed {
                     appState.completeJourney()
-                },
-                onCancel: {
+                }
+            }
+            .confirmationDialog(
+                "End Journey Early?",
+                isPresented: $showEndConfirmation,
+                titleVisibility: .visible
+            ) {
+                Button("End Journey", role: .destructive) {
                     appState.interruptJourney()
                 }
-            )
+                Button("Continue", role: .cancel) {}
+            } message: {
+                Text("Your progress will be saved, but this journey will be marked as interrupted.")
+            }
         } else {
-            // Fallback for no active journey
             noJourneyView
         }
     }
+
+    // MARK: - No Journey View
 
     private var noJourneyView: some View {
         ZStack {
@@ -44,86 +85,37 @@ struct RideModeView: View {
             }
         }
     }
-}
-
-// MARK: - Legacy Ride Mode View (Map-based)
-
-struct LegacyRideModeView: View {
-    @Environment(\.appState) private var appState
-    @State private var showEndConfirmation = false
-    @State private var railPath: [CLLocationCoordinate2D] = []
-    @State private var currentPosition: CLLocationCoordinate2D?
-    @State private var cameraPosition: MapCameraPosition = .automatic
-    @State private var trainHeading: Double = 0
-
-    var body: some View {
-        ZStack {
-            // Full-screen satellite map
-            railMapView
-                .ignoresSafeArea()
-
-            // Overlay controls
-            VStack {
-                // Top bar with pause button
-                topBar
-
-                Spacer()
-
-                // Bottom stats bar
-                bottomStatsBar
-            }
-        }
-        .preferredColorScheme(.dark)
-        .onAppear {
-            setupRailPath()
-        }
-        .onChange(of: appState.timerService.progress) { _, newValue in
-            updateTrainPosition(progress: newValue)
-        }
-        .onChange(of: appState.timerService.state) { _, newState in
-            if newState == .completed {
-                appState.completeJourney()
-            }
-        }
-        .confirmationDialog(
-            "End Journey Early?",
-            isPresented: $showEndConfirmation,
-            titleVisibility: .visible
-        ) {
-            Button("End Journey", role: .destructive) {
-                appState.interruptJourney()
-            }
-            Button("Continue", role: .cancel) {}
-        } message: {
-            Text("Your progress will be saved, but this journey will be marked as interrupted.")
-        }
-    }
 
     // MARK: - Rail Map
 
     private var railMapView: some View {
         Map(position: $cameraPosition, interactionModes: [.pan, .zoom]) {
-            // Rail path line (the actual route)
+            // Rail path line (thin route line like flight tracker)
             if railPath.count >= 2 {
                 MapPolyline(coordinates: railPath)
-                    .stroke(Color.white.opacity(0.6), lineWidth: 3)
+                    .stroke(Color(hex: "FF3B5C").opacity(0.7), lineWidth: 2)
             }
 
             // Origin station marker
             if let journey = appState.activeJourney {
+                // Small dot at origin
                 Annotation("", coordinate: journey.originStation.locationCoordinate) {
-                    LegacyStationDot(isOrigin: true)
+                    Circle()
+                        .fill(Color.white)
+                        .frame(width: 8, height: 8)
                 }
 
-                // Destination station marker
+                // Small dot at destination
                 Annotation("", coordinate: journey.destinationStation.locationCoordinate) {
-                    LegacyStationDot(isOrigin: false)
+                    Circle()
+                        .fill(Color.white.opacity(0.5))
+                        .frame(width: 8, height: 8)
                 }
 
                 // Train marker (moves along the route)
                 if let position = currentPosition {
                     Annotation("", coordinate: position) {
-                        LegacyTrainMarkerView(heading: trainHeading)
+                        TrainIconView(heading: trainHeading)
                     }
                 }
             }
@@ -131,60 +123,114 @@ struct LegacyRideModeView: View {
         .mapStyle(.imagery(elevation: .realistic))
     }
 
-    // MARK: - Top Bar
+    // MARK: - Station Badge (Yellow like ORD in screenshot)
 
-    private var topBar: some View {
-        HStack {
-            // Pause/Play button
-            Button {
-                if appState.timerService.state == .running {
-                    appState.timerService.pause()
-                } else {
-                    appState.timerService.resume()
+    private var stationBadge: some View {
+        GeometryReader { geometry in
+            if let journey = appState.activeJourney, currentPosition != nil {
+                // Position badge near the train but offset
+                let badgePosition = CGPoint(
+                    x: geometry.size.width * 0.48,
+                    y: geometry.size.height * 0.58
+                )
+
+                HStack(spacing: 4) {
+                    Image(systemName: "train.side.front.car")
+                        .font(.system(size: 10, weight: .bold))
+                    Text(journey.originStation.code)
+                        .font(.system(size: 12, weight: .bold))
                 }
-            } label: {
-                Image(systemName: appState.timerService.state == .running ? "pause.fill" : "play.fill")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .frame(width: 44, height: 44)
-                    .background(
-                        Circle()
-                            .fill(Color.black.opacity(0.5))
-                    )
+                .foregroundColor(.black)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(Color.yellow)
+                )
+                .position(badgePosition)
+            }
+        }
+    }
+
+    // MARK: - Top Controls Bar
+
+    private var topControlsBar: some View {
+        HStack(alignment: .top) {
+            // Left side controls
+            VStack(spacing: 12) {
+                // Pause/Play button
+                Button {
+                    if appState.timerService.state == .running {
+                        appState.timerService.pause()
+                    } else {
+                        appState.timerService.resume()
+                    }
+                } label: {
+                    Image(systemName: appState.timerService.state == .running ? "pause.fill" : "play.fill")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .frame(width: 44, height: 44)
+                        .background(
+                            Circle()
+                                .fill(Color.black.opacity(0.4))
+                        )
+                }
+
+                // Sound toggle button
+                Button {
+                    isSoundEnabled.toggle()
+                } label: {
+                    Image(systemName: isSoundEnabled ? "waveform" : "speaker.slash.fill")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .frame(width: 44, height: 44)
+                        .background(
+                            Circle()
+                                .fill(Color.black.opacity(0.4))
+                        )
+                }
             }
 
             Spacer()
 
             // Right side controls
             VStack(spacing: 12) {
+                // Compass/North indicator
+                Image(systemName: "location.north.fill")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: 36, height: 36)
+                    .background(
+                        Circle()
+                            .fill(Color.black.opacity(0.4))
+                    )
+
+                // Map layers button
+                Button {
+                    // Toggle map style if needed
+                } label: {
+                    Image(systemName: "square.2.layers.3d")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .frame(width: 36, height: 36)
+                        .background(
+                            Circle()
+                                .fill(Color.black.opacity(0.4))
+                        )
+                }
+
                 // End journey button
                 Button {
                     showEndConfirmation = true
                 } label: {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 16, weight: .semibold))
+                    Image(systemName: "rectangle.portrait.and.arrow.right")
+                        .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(.white)
-                        .frame(width: 40, height: 40)
+                        .frame(width: 36, height: 36)
                         .background(
                             Circle()
-                                .fill(Color.black.opacity(0.5))
+                                .fill(Color.black.opacity(0.4))
                         )
-                }
-
-                // Status indicator
-                if let journey = appState.activeJourney {
-                    VStack(spacing: 4) {
-                        Image(systemName: "train.side.front.car")
-                            .font(.system(size: 14))
-                        Text(journey.originStation.railLine)
-                            .font(.system(size: 10, weight: .medium))
-                    }
-                    .foregroundStyle(.white)
-                    .padding(8)
-                    .background(
-                        RoundedRectangle(cornerRadius: 8)
-                            .fill(Color.black.opacity(0.5))
-                    )
                 }
             }
         }
@@ -195,38 +241,42 @@ struct LegacyRideModeView: View {
     // MARK: - Bottom Stats Bar
 
     private var bottomStatsBar: some View {
-        HStack {
-            // Time Remaining
-            VStack(alignment: .leading, spacing: 4) {
+        HStack(alignment: .bottom) {
+            // Time Remaining (left side)
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 4) {
+                    Image(systemName: "applelogo")
+                        .font(.system(size: 10))
+                    Text("Maps")
+                        .font(.system(size: 11))
+                }
+                .foregroundStyle(Color.white.opacity(0.5))
+
                 Text("Time Remaining")
-                    .font(.system(size: 13))
+                    .font(.system(size: 12))
                     .foregroundStyle(Color.white.opacity(0.7))
 
                 Text(formattedTimeRemaining)
-                    .font(.system(size: 32, weight: .bold, design: .default))
+                    .font(.system(size: 28, weight: .bold, design: .default))
                     .foregroundStyle(.white)
             }
 
             Spacer()
 
-            // Distance Remaining
-            VStack(alignment: .trailing, spacing: 4) {
+            // Distance Remaining (right side)
+            VStack(alignment: .trailing, spacing: 2) {
                 Text("Distance Remaining")
-                    .font(.system(size: 13))
+                    .font(.system(size: 12))
                     .foregroundStyle(Color.white.opacity(0.7))
 
                 Text(formattedDistanceRemaining)
-                    .font(.system(size: 32, weight: .bold, design: .default))
+                    .font(.system(size: 28, weight: .bold, design: .default))
                     .foregroundStyle(.white)
             }
         }
         .padding(.horizontal, 20)
-        .padding(.vertical, 16)
-        .background(
-            Rectangle()
-                .fill(.ultraThinMaterial)
-                .ignoresSafeArea(edges: .bottom)
-        )
+        .padding(.vertical, 12)
+        .padding(.bottom, 20)
     }
 
     // MARK: - Formatted Values
@@ -402,44 +452,17 @@ struct LegacyRideModeView: View {
     }
 }
 
-// MARK: - Legacy Train Marker View
+// MARK: - Train Icon View
 
-struct LegacyTrainMarkerView: View {
+struct TrainIconView: View {
     let heading: Double
 
     var body: some View {
-        ZStack {
-            // Glow effect
-            Circle()
-                .fill(Color.white.opacity(0.3))
-                .frame(width: 50, height: 50)
-                .blur(radius: 8)
-
-            // Train icon (pointing in direction of travel)
-            Image(systemName: "train.side.front.car")
-                .font(.system(size: 28, weight: .bold))
-                .foregroundStyle(.white)
-                .shadow(color: .black.opacity(0.5), radius: 4, x: 0, y: 2)
-                .rotationEffect(.degrees(heading - 90)) // Adjust for icon orientation
-        }
-    }
-}
-
-// MARK: - Legacy Station Dot
-
-struct LegacyStationDot: View {
-    let isOrigin: Bool
-
-    var body: some View {
-        ZStack {
-            Circle()
-                .fill(isOrigin ? Color.white : Color.white.opacity(0.3))
-                .frame(width: 16, height: 16)
-
-            Circle()
-                .stroke(Color.white, lineWidth: 2)
-                .frame(width: 16, height: 16)
-        }
+        Image(systemName: "train.side.front.car")
+            .font(.system(size: 24, weight: .bold))
+            .foregroundStyle(.white)
+            .shadow(color: .black.opacity(0.5), radius: 4, x: 0, y: 2)
+            .rotationEffect(.degrees(heading - 90))
     }
 }
 
