@@ -17,6 +17,8 @@ struct RideModeView: View {
     @State private var cameraPosition: MapCameraPosition = .automatic
     @State private var trainHeading: Double = 0
     @State private var isSoundEnabled = true
+    @State private var smoothProgress: Double = 0
+    @State private var updateTimer: Timer?
 
     var body: some View {
         if let journey = appState.activeJourney {
@@ -42,12 +44,14 @@ struct RideModeView: View {
             .preferredColorScheme(.dark)
             .onAppear {
                 setupRailPath()
+                startContinuousUpdates()
             }
-            .onChange(of: appState.timerService.progress) { _, newValue in
-                updateTrainPosition(progress: newValue)
+            .onDisappear {
+                stopContinuousUpdates()
             }
             .onChange(of: appState.timerService.state) { _, newState in
                 if newState == .completed {
+                    stopContinuousUpdates()
                     appState.completeJourney()
                 }
             }
@@ -57,6 +61,7 @@ struct RideModeView: View {
                 titleVisibility: .visible
             ) {
                 Button("End Journey", role: .destructive) {
+                    stopContinuousUpdates()
                     appState.interruptJourney()
                 }
                 Button("Continue", role: .cancel) {}
@@ -66,6 +71,30 @@ struct RideModeView: View {
         } else {
             noJourneyView
         }
+    }
+
+    // MARK: - Continuous Updates
+
+    private func startContinuousUpdates() {
+        // Update train position 20 times per second for smooth movement
+        updateTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { _ in
+            updateTrainPositionSmooth()
+        }
+    }
+
+    private func stopContinuousUpdates() {
+        updateTimer?.invalidate()
+        updateTimer = nil
+    }
+
+    private func updateTrainPositionSmooth() {
+        let targetProgress = appState.timerService.progress
+
+        // Smoothly interpolate towards target progress
+        let smoothingFactor = 0.15
+        smoothProgress += (targetProgress - smoothProgress) * smoothingFactor
+
+        updateTrainPosition(progress: smoothProgress)
     }
 
     // MARK: - No Journey View
@@ -115,7 +144,7 @@ struct RideModeView: View {
                 // Train marker (moves along the route)
                 if let position = currentPosition {
                     Annotation("", coordinate: position) {
-                        TrainIconView(heading: trainHeading)
+                        HighSpeedTrainIcon(heading: trainHeading)
                     }
                 }
             }
@@ -321,6 +350,7 @@ struct RideModeView: View {
         }
 
         currentPosition = railPath.first
+        smoothProgress = 0
         updateCamera()
     }
 
@@ -429,15 +459,23 @@ struct RideModeView: View {
     private func updateTrainPosition(progress: Double) {
         guard railPath.count > 1 else { return }
 
-        let index = Int(Double(railPath.count - 1) * progress)
-        let clampedIndex = min(max(index, 0), railPath.count - 1)
-        let newPosition = railPath[clampedIndex]
+        // Calculate exact position with interpolation between waypoints
+        let exactIndex = Double(railPath.count - 1) * progress
+        let lowerIndex = Int(exactIndex)
+        let upperIndex = min(lowerIndex + 1, railPath.count - 1)
+        let fraction = exactIndex - Double(lowerIndex)
+
+        let lowerCoord = railPath[lowerIndex]
+        let upperCoord = railPath[upperIndex]
+
+        // Interpolate position between waypoints for smoother movement
+        let interpolatedLat = lowerCoord.latitude + (upperCoord.latitude - lowerCoord.latitude) * fraction
+        let interpolatedLon = lowerCoord.longitude + (upperCoord.longitude - lowerCoord.longitude) * fraction
+        let newPosition = CLLocationCoordinate2D(latitude: interpolatedLat, longitude: interpolatedLon)
 
         // Calculate heading towards next waypoint
-        if clampedIndex < railPath.count - 1 {
-            let nextIndex = clampedIndex + 1
-            let next = railPath[nextIndex]
-            trainHeading = calculateHeading(from: newPosition, to: next)
+        if upperIndex < railPath.count {
+            trainHeading = calculateHeading(from: newPosition, to: upperCoord)
         }
 
         currentPosition = newPosition
@@ -452,17 +490,75 @@ struct RideModeView: View {
     }
 }
 
-// MARK: - Train Icon View
+// MARK: - High Speed Train Icon (Bird's Eye View)
 
-struct TrainIconView: View {
+struct HighSpeedTrainIcon: View {
     let heading: Double
 
     var body: some View {
-        Image(systemName: "train.side.front.car")
-            .font(.system(size: 24, weight: .bold))
-            .foregroundStyle(.white)
-            .shadow(color: .black.opacity(0.5), radius: 4, x: 0, y: 2)
-            .rotationEffect(.degrees(heading - 90))
+        ZStack {
+            // Glow effect
+            Ellipse()
+                .fill(Color.white.opacity(0.3))
+                .frame(width: 40, height: 20)
+                .blur(radius: 6)
+
+            // Train body (bullet train shape from above)
+            BulletTrainShape()
+                .fill(Color.white)
+                .frame(width: 32, height: 14)
+                .shadow(color: .black.opacity(0.5), radius: 3, x: 0, y: 2)
+        }
+        .rotationEffect(.degrees(heading))
+    }
+}
+
+// MARK: - Bullet Train Shape (Top-down view)
+
+struct BulletTrainShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+
+        let width = rect.width
+        let height = rect.height
+
+        // Streamlined bullet train from above
+        // Front nose (pointed)
+        path.move(to: CGPoint(x: width, y: height / 2))
+
+        // Top side curve from nose to body
+        path.addQuadCurve(
+            to: CGPoint(x: width * 0.7, y: 0),
+            control: CGPoint(x: width * 0.9, y: height * 0.15)
+        )
+
+        // Top straight body
+        path.addLine(to: CGPoint(x: width * 0.15, y: 0))
+
+        // Rear curve (top)
+        path.addQuadCurve(
+            to: CGPoint(x: 0, y: height / 2),
+            control: CGPoint(x: 0, y: 0)
+        )
+
+        // Rear curve (bottom)
+        path.addQuadCurve(
+            to: CGPoint(x: width * 0.15, y: height),
+            control: CGPoint(x: 0, y: height)
+        )
+
+        // Bottom straight body
+        path.addLine(to: CGPoint(x: width * 0.7, y: height))
+
+        // Bottom side curve from body to nose
+        path.addQuadCurve(
+            to: CGPoint(x: width, y: height / 2),
+            control: CGPoint(x: width * 0.9, y: height * 0.85)
+        )
+
+        path.closeSubpath()
+
+        return path
     }
 }
 
