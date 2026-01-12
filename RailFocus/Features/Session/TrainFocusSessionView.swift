@@ -82,7 +82,7 @@ struct TrainFocusSessionView: View {
         .fullScreenCover(isPresented: $showArrivalSummary) {
             ArrivalSummaryView(
                 destinationName: journey.destinationStation.name,
-                totalDuration: journey.duration,
+                totalDuration: journey.scheduledDuration,
                 stationsPassed: sessionController.passedStationCount,
                 onLogNotes: {
                     showArrivalSummary = false
@@ -127,7 +127,7 @@ struct TrainFocusSessionView: View {
     private func setupSession() {
         // Configure the session controller
         sessionController.configure(
-            duration: journey.duration,
+            duration: journey.scheduledDuration,
             originName: journey.originStation.name,
             destinationName: journey.destinationStation.name
         )
