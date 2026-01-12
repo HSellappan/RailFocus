@@ -290,9 +290,9 @@ struct WhooshLine: View {
     }
 }
 
-// MARK: - Stars Background (Enhanced)
+// MARK: - Session Stars Background
 
-struct StarsBackgroundView: View {
+private struct SessionStarsBackgroundView: View {
     var body: some View {
         Canvas { context, size in
             for _ in 0..<100 {
