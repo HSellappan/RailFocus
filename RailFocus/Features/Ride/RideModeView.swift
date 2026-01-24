@@ -23,23 +23,24 @@ struct RideModeView: View {
     var body: some View {
         if let journey = appState.activeJourney {
             ZStack {
-                // Full-screen satellite map
+                // Full-screen map (standard style like flight tracker)
                 railMapView
                     .ignoresSafeArea()
 
-                // Overlay controls
+                // Left side controls
+                leftControlsOverlay
+
+                // Right side controls
+                rightControlsOverlay
+
+                // Station badge (yellow like ORD in screenshot)
+                stationBadge
+
+                // Bottom stats bar
                 VStack {
-                    // Top bar with controls
-                    topControlsBar
-
                     Spacer()
-
-                    // Bottom stats bar
                     bottomStatsBar
                 }
-
-                // Origin station label (yellow badge like ORD in screenshot)
-                stationBadge
             }
             .preferredColorScheme(.dark)
             .onAppear {
@@ -119,52 +120,24 @@ struct RideModeView: View {
         }
     }
 
-    // MARK: - Rail Map
+    // MARK: - Rail Map (Clean - only active route visible)
 
     private var railMapView: some View {
         Map(position: $cameraPosition, interactionModes: [.pan, .zoom]) {
-            // Background: All European rail routes
-            EuropeanRailRoutesContent.whiteLine
-
-            // Active journey rail path (highlighted)
+            // ONLY the active journey rail path - thin line like flight tracker
             if railPath.count >= 2 {
                 MapPolyline(coordinates: railPath)
-                    .stroke(Color(hex: "FF3B5C").opacity(0.8), lineWidth: 3)
+                    .stroke(Color(hex: "E84855").opacity(0.6), lineWidth: 2)
             }
 
-            // Origin station marker
-            if let journey = appState.activeJourney {
-                // Small dot at origin
-                Annotation("", coordinate: journey.originStation.locationCoordinate) {
-                    Circle()
-                        .fill(Color.white)
-                        .frame(width: 10, height: 10)
-                        .overlay(
-                            Circle()
-                                .stroke(Color.white.opacity(0.5), lineWidth: 2)
-                        )
-                }
-
-                // Small dot at destination
-                Annotation("", coordinate: journey.destinationStation.locationCoordinate) {
-                    Circle()
-                        .fill(Color.white.opacity(0.7))
-                        .frame(width: 10, height: 10)
-                        .overlay(
-                            Circle()
-                                .stroke(Color.white.opacity(0.3), lineWidth: 2)
-                        )
-                }
-
-                // Train marker (moves along the route)
-                if let position = currentPosition {
-                    Annotation("", coordinate: position) {
-                        HighSpeedTrainIcon(heading: trainHeading)
-                    }
+            // Train marker (moves along the route)
+            if let position = currentPosition {
+                Annotation("", coordinate: position) {
+                    ModernTrainMapIcon(heading: trainHeading)
                 }
             }
         }
-        .mapStyle(.imagery(elevation: .realistic))
+        .mapStyle(.standard(elevation: .realistic, emphasis: .muted, pointsOfInterest: .including([]), showsTraffic: false))
     }
 
     // MARK: - Station Badge (Yellow like ORD in screenshot)
@@ -172,35 +145,33 @@ struct RideModeView: View {
     private var stationBadge: some View {
         GeometryReader { geometry in
             if let journey = appState.activeJourney, currentPosition != nil {
-                // Position badge near the train but offset
-                let badgePosition = CGPoint(
-                    x: geometry.size.width * 0.48,
-                    y: geometry.size.height * 0.58
-                )
-
+                // Position badge below and slightly left of center (near train)
                 HStack(spacing: 4) {
                     Image(systemName: "tram.fill")
                         .font(.system(size: 10, weight: .bold))
                     Text(journey.originStation.code)
-                        .font(.system(size: 12, weight: .bold))
+                        .font(.system(size: 12, weight: .bold, design: .monospaced))
                 }
                 .foregroundColor(.black)
                 .padding(.horizontal, 8)
-                .padding(.vertical, 4)
+                .padding(.vertical, 5)
                 .background(
                     RoundedRectangle(cornerRadius: 4)
                         .fill(Color.yellow)
+                        .shadow(color: .black.opacity(0.3), radius: 2, x: 0, y: 1)
                 )
-                .position(badgePosition)
+                .position(
+                    x: geometry.size.width * 0.45,
+                    y: geometry.size.height * 0.62
+                )
             }
         }
     }
 
-    // MARK: - Top Controls Bar
+    // MARK: - Left Controls (Pause, Sound)
 
-    private var topControlsBar: some View {
-        HStack(alignment: .top) {
-            // Left side controls
+    private var leftControlsOverlay: some View {
+        VStack {
             VStack(spacing: 12) {
                 // Pause/Play button
                 Button {
@@ -211,12 +182,12 @@ struct RideModeView: View {
                     }
                 } label: {
                     Image(systemName: appState.timerService.state == .running ? "pause.fill" : "play.fill")
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(.system(size: 18, weight: .medium))
                         .foregroundStyle(.white)
-                        .frame(width: 44, height: 44)
+                        .frame(width: 50, height: 50)
                         .background(
                             Circle()
-                                .fill(Color.black.opacity(0.4))
+                                .fill(Color(white: 0.2).opacity(0.7))
                         )
                 }
 
@@ -225,41 +196,67 @@ struct RideModeView: View {
                     isSoundEnabled.toggle()
                 } label: {
                     Image(systemName: isSoundEnabled ? "waveform" : "speaker.slash.fill")
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(.system(size: 18, weight: .medium))
                         .foregroundStyle(.white)
-                        .frame(width: 44, height: 44)
+                        .frame(width: 50, height: 50)
                         .background(
                             Circle()
-                                .fill(Color.black.opacity(0.4))
+                                .fill(Color(white: 0.2).opacity(0.7))
                         )
                 }
             }
+            .padding(.leading, 16)
+            .padding(.top, 60)
 
             Spacer()
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
 
-            // Right side controls
-            VStack(spacing: 12) {
+    // MARK: - Right Controls (Compass, Layers, Phone, Exit)
+
+    private var rightControlsOverlay: some View {
+        VStack {
+            VStack(spacing: 10) {
                 // Compass/North indicator
-                Image(systemName: "location.north.fill")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .frame(width: 36, height: 36)
-                    .background(
-                        Circle()
-                            .fill(Color.black.opacity(0.4))
-                    )
-
-                // Map layers button
                 Button {
-                    // Toggle map style if needed
+                    // Not implemented yet
                 } label: {
-                    Image(systemName: "square.2.layers.3d")
-                        .font(.system(size: 14, weight: .semibold))
+                    Image(systemName: "location.north.fill")
+                        .font(.system(size: 16, weight: .medium))
                         .foregroundStyle(.white)
-                        .frame(width: 36, height: 36)
+                        .frame(width: 40, height: 40)
                         .background(
                             Circle()
-                                .fill(Color.black.opacity(0.4))
+                                .fill(Color(white: 0.2).opacity(0.7))
+                        )
+                }
+
+                // Map layers button (3D icon like screenshot)
+                Button {
+                    // Not implemented yet
+                } label: {
+                    Image(systemName: "square.3.layers.3d")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundStyle(.white)
+                        .frame(width: 40, height: 40)
+                        .background(
+                            Circle()
+                                .fill(Color(white: 0.2).opacity(0.7))
+                        )
+                }
+
+                // Phone/device button (like screenshot)
+                Button {
+                    // Not implemented yet
+                } label: {
+                    Image(systemName: "iphone")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundStyle(.white)
+                        .frame(width: 40, height: 40)
+                        .background(
+                            Circle()
+                                .fill(Color(white: 0.2).opacity(0.7))
                         )
                 }
 
@@ -267,19 +264,22 @@ struct RideModeView: View {
                 Button {
                     showEndConfirmation = true
                 } label: {
-                    Image(systemName: "rectangle.portrait.and.arrow.right")
-                        .font(.system(size: 14, weight: .semibold))
+                    Image(systemName: "xmark")
+                        .font(.system(size: 16, weight: .medium))
                         .foregroundStyle(.white)
-                        .frame(width: 36, height: 36)
+                        .frame(width: 40, height: 40)
                         .background(
                             Circle()
-                                .fill(Color.black.opacity(0.4))
+                                .fill(Color(white: 0.2).opacity(0.7))
                         )
                 }
             }
+            .padding(.trailing, 16)
+            .padding(.top, 60)
+
+            Spacer()
         }
-        .padding(.horizontal, 16)
-        .padding(.top, 60)
+        .frame(maxWidth: .infinity, alignment: .trailing)
     }
 
     // MARK: - Bottom Stats Bar
@@ -289,19 +289,19 @@ struct RideModeView: View {
             // Time Remaining (left side)
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 4) {
-                    Image(systemName: "map.fill")
+                    Image(systemName: "apple.logo")
                         .font(.system(size: 10))
-                    Text("Rail")
-                        .font(.system(size: 11))
+                    Text("Maps")
+                        .font(.system(size: 11, weight: .medium))
                 }
                 .foregroundStyle(Color.white.opacity(0.5))
 
                 Text("Time Remaining")
-                    .font(.system(size: 12))
+                    .font(.system(size: 13))
                     .foregroundStyle(Color.white.opacity(0.7))
 
                 Text(formattedTimeRemaining)
-                    .font(.system(size: 28, weight: .bold, design: .default))
+                    .font(.system(size: 32, weight: .bold, design: .default))
                     .foregroundStyle(.white)
             }
 
@@ -310,17 +310,17 @@ struct RideModeView: View {
             // Distance Remaining (right side)
             VStack(alignment: .trailing, spacing: 2) {
                 Text("Distance Remaining")
-                    .font(.system(size: 12))
+                    .font(.system(size: 13))
                     .foregroundStyle(Color.white.opacity(0.7))
 
                 Text(formattedDistanceRemaining)
-                    .font(.system(size: 28, weight: .bold, design: .default))
+                    .font(.system(size: 32, weight: .bold, design: .default))
                     .foregroundStyle(.white)
             }
         }
         .padding(.horizontal, 20)
-        .padding(.vertical, 12)
-        .padding(.bottom, 20)
+        .padding(.vertical, 16)
+        .padding(.bottom, 24)
     }
 
     // MARK: - Formatted Values
@@ -348,23 +348,15 @@ struct RideModeView: View {
 
         // Try to find detailed route from EuropeanRailNetwork
         if let detailedRoute = EuropeanRailNetwork.findDetailedRoute(from: origin, to: destination) {
-            // Use the detailed waypoints and interpolate for smooth curves
             railPath = createSmoothPath(from: detailedRoute)
-            print("Found rail route with \(detailedRoute.count) waypoints -> \(railPath.count) interpolated points")
+        } else if let route = TrainRoute.findRoute(from: origin, to: destination) {
+            let stationCoords = getRouteCoordinates(route: route, from: origin, to: destination)
+            railPath = createSmoothPath(from: stationCoords)
         } else {
-            // Fallback: try TrainRoute
-            if let route = TrainRoute.findRoute(from: origin, to: destination) {
-                let stationCoords = getRouteCoordinates(route: route, from: origin, to: destination)
-                railPath = createSmoothPath(from: stationCoords)
-                print("Using TrainRoute with \(stationCoords.count) stations -> \(railPath.count) points")
-            } else {
-                // Final fallback: create curved path between stations
-                railPath = createCurvedPath(
-                    from: origin.locationCoordinate,
-                    to: destination.locationCoordinate
-                )
-                print("Using fallback curved path with \(railPath.count) points")
-            }
+            railPath = createCurvedPath(
+                from: origin.locationCoordinate,
+                to: destination.locationCoordinate
+            )
         }
 
         currentPosition = railPath.first
@@ -376,7 +368,7 @@ struct RideModeView: View {
         guard waypoints.count >= 2 else { return waypoints }
 
         var result: [CLLocationCoordinate2D] = []
-        let pointsPerSegment = 30 // More points for smoother movement
+        let pointsPerSegment = 30
 
         for i in 0..<waypoints.count - 1 {
             let start = waypoints[i]
@@ -384,15 +376,12 @@ struct RideModeView: View {
 
             for j in 0..<pointsPerSegment {
                 let t = Double(j) / Double(pointsPerSegment)
-
-                // Use smooth interpolation
                 let lat = start.latitude + (end.latitude - start.latitude) * t
                 let lon = start.longitude + (end.longitude - start.longitude) * t
                 result.append(CLLocationCoordinate2D(latitude: lat, longitude: lon))
             }
         }
 
-        // Add final point
         if let last = waypoints.last {
             result.append(last)
         }
@@ -409,8 +398,6 @@ struct RideModeView: View {
         let startIndex = min(originIndex, destIndex)
         let endIndex = max(originIndex, destIndex)
         let stationSegment = Array(route.stations[startIndex...endIndex])
-
-        // If traveling in reverse, reverse the segment
         let orderedStations = originIndex < destIndex ? stationSegment : stationSegment.reversed()
 
         return orderedStations.map { $0.locationCoordinate }
@@ -423,14 +410,12 @@ struct RideModeView: View {
         var path: [CLLocationCoordinate2D] = []
         let segments = 150
 
-        // Calculate a slight curve offset (perpendicular to the line)
         let midLat = (start.latitude + end.latitude) / 2
         let midLon = (start.longitude + end.longitude) / 2
 
-        // Offset the midpoint slightly to create a natural rail curve
         let deltaLat = end.latitude - start.latitude
         let deltaLon = end.longitude - start.longitude
-        let perpLat = -deltaLon * 0.1 // Small perpendicular offset
+        let perpLat = -deltaLon * 0.1
         let perpLon = deltaLat * 0.1
 
         let controlLat = midLat + perpLat
@@ -438,11 +423,8 @@ struct RideModeView: View {
 
         for i in 0...segments {
             let t = Double(i) / Double(segments)
-
-            // Quadratic Bezier curve
             let lat = pow(1-t, 2) * start.latitude + 2 * (1-t) * t * controlLat + pow(t, 2) * end.latitude
             let lon = pow(1-t, 2) * start.longitude + 2 * (1-t) * t * controlLon + pow(t, 2) * end.longitude
-
             path.append(CLLocationCoordinate2D(latitude: lat, longitude: lon))
         }
 
@@ -458,12 +440,10 @@ struct RideModeView: View {
         let centerLat = (origin.latitude + destination.latitude) / 2
         let centerLon = (origin.longitude + destination.longitude) / 2
 
-        // Calculate distance to set appropriate zoom
         let latDiff = abs(origin.latitude - destination.latitude)
         let lonDiff = abs(origin.longitude - destination.longitude)
         let maxDiff = max(latDiff, lonDiff)
 
-        // Adjust camera distance based on route length
         let distance = max(maxDiff * 180000, 400000)
 
         cameraPosition = .camera(
@@ -479,7 +459,6 @@ struct RideModeView: View {
     private func updateTrainPosition(progress: Double) {
         guard railPath.count > 1 else { return }
 
-        // Calculate exact position with sub-waypoint interpolation
         let exactIndex = Double(railPath.count - 1) * progress
         let lowerIndex = max(0, min(Int(exactIndex), railPath.count - 2))
         let upperIndex = lowerIndex + 1
@@ -488,12 +467,10 @@ struct RideModeView: View {
         let lowerCoord = railPath[lowerIndex]
         let upperCoord = railPath[upperIndex]
 
-        // Smooth interpolation between waypoints
         let interpolatedLat = lowerCoord.latitude + (upperCoord.latitude - lowerCoord.latitude) * fraction
         let interpolatedLon = lowerCoord.longitude + (upperCoord.longitude - lowerCoord.longitude) * fraction
         let newPosition = CLLocationCoordinate2D(latitude: interpolatedLat, longitude: interpolatedLon)
 
-        // Calculate heading - look ahead for smoother direction
         let lookAheadIndex = min(upperIndex + 2, railPath.count - 1)
         let lookAheadCoord = railPath[lookAheadIndex]
         trainHeading = calculateHeading(from: newPosition, to: lookAheadCoord)
@@ -504,8 +481,6 @@ struct RideModeView: View {
     private func calculateHeading(from: CLLocationCoordinate2D, to: CLLocationCoordinate2D) -> Double {
         let deltaLon = to.longitude - from.longitude
         let deltaLat = to.latitude - from.latitude
-
-        // atan2 gives angle from positive Y axis (north), clockwise
         let angle = atan2(deltaLon, deltaLat) * 180 / .pi
         return angle
     }
@@ -525,79 +500,89 @@ private class DisplayLinkTarget {
     }
 }
 
-// MARK: - High Speed Train Icon (Bird's Eye View - Proper Orientation)
+// MARK: - Modern Train Map Icon (Realistic Bullet Train)
 
-struct HighSpeedTrainIcon: View {
+struct ModernTrainMapIcon: View {
     let heading: Double
 
     var body: some View {
         ZStack {
-            // Glow/shadow effect
+            // Shadow/glow
             Ellipse()
+                .fill(Color.black.opacity(0.3))
+                .frame(width: 30, height: 15)
+                .offset(y: 3)
+                .blur(radius: 3)
+
+            // Train body
+            RealisticBulletTrainShape()
                 .fill(
-                    RadialGradient(
-                        colors: [Color.white.opacity(0.4), Color.clear],
-                        center: .center,
-                        startRadius: 0,
-                        endRadius: 20
+                    LinearGradient(
+                        colors: [Color.white, Color(white: 0.9)],
+                        startPoint: .leading,
+                        endPoint: .trailing
                     )
                 )
-                .frame(width: 50, height: 25)
-
-            // Train body (bullet train shape from above)
-            // Nose points UP (north) when heading is 0
-            BulletTrainShape()
-                .fill(Color.white)
-                .frame(width: 12, height: 28)
-                .shadow(color: .black.opacity(0.6), radius: 4, x: 0, y: 2)
+                .frame(width: 14, height: 32)
+                .overlay(
+                    // Windshield accent
+                    RealisticBulletTrainShape()
+                        .stroke(Color(white: 0.7), lineWidth: 0.5)
+                        .frame(width: 14, height: 32)
+                )
+                .shadow(color: .black.opacity(0.4), radius: 2, x: 0, y: 1)
         }
         .rotationEffect(.degrees(heading))
     }
 }
 
-// MARK: - Bullet Train Shape (Top-down view - nose points UP)
+// MARK: - Realistic Bullet Train Shape
 
-struct BulletTrainShape: Shape {
+struct RealisticBulletTrainShape: Shape {
     func path(in rect: CGRect) -> Path {
         var path = Path()
 
-        let width = rect.width
-        let height = rect.height
+        let w = rect.width
+        let h = rect.height
 
-        // Streamlined bullet train from above
-        // Nose at TOP (y = 0), tail at BOTTOM (y = height)
+        // Sleek bullet train from above - nose points UP
+        // Very streamlined shape like Shinkansen/TGV
 
-        // Start at nose tip (top center)
-        path.move(to: CGPoint(x: width / 2, y: 0))
+        // Nose tip
+        path.move(to: CGPoint(x: w * 0.5, y: 0))
 
-        // Right side curve from nose to body
-        path.addQuadCurve(
-            to: CGPoint(x: width, y: height * 0.25),
-            control: CGPoint(x: width * 0.85, y: height * 0.08)
+        // Right nose curve (very aerodynamic)
+        path.addCurve(
+            to: CGPoint(x: w, y: h * 0.2),
+            control1: CGPoint(x: w * 0.55, y: h * 0.02),
+            control2: CGPoint(x: w * 0.9, y: h * 0.1)
         )
 
-        // Right straight body
-        path.addLine(to: CGPoint(x: width, y: height * 0.85))
+        // Right body (slight taper)
+        path.addLine(to: CGPoint(x: w * 0.95, y: h * 0.75))
 
         // Right rear curve
-        path.addQuadCurve(
-            to: CGPoint(x: width / 2, y: height),
-            control: CGPoint(x: width, y: height)
+        path.addCurve(
+            to: CGPoint(x: w * 0.5, y: h),
+            control1: CGPoint(x: w * 0.95, y: h * 0.9),
+            control2: CGPoint(x: w * 0.7, y: h)
         )
 
         // Left rear curve
-        path.addQuadCurve(
-            to: CGPoint(x: 0, y: height * 0.85),
-            control: CGPoint(x: 0, y: height)
+        path.addCurve(
+            to: CGPoint(x: w * 0.05, y: h * 0.75),
+            control1: CGPoint(x: w * 0.3, y: h),
+            control2: CGPoint(x: w * 0.05, y: h * 0.9)
         )
 
-        // Left straight body
-        path.addLine(to: CGPoint(x: 0, y: height * 0.25))
+        // Left body
+        path.addLine(to: CGPoint(x: 0, y: h * 0.2))
 
-        // Left side curve from body to nose
-        path.addQuadCurve(
-            to: CGPoint(x: width / 2, y: 0),
-            control: CGPoint(x: width * 0.15, y: height * 0.08)
+        // Left nose curve
+        path.addCurve(
+            to: CGPoint(x: w * 0.5, y: 0),
+            control1: CGPoint(x: w * 0.1, y: h * 0.1),
+            control2: CGPoint(x: w * 0.45, y: h * 0.02)
         )
 
         path.closeSubpath()
