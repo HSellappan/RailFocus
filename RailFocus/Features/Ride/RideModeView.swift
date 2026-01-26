@@ -444,14 +444,20 @@ struct RideModeView: View {
         let lonDiff = abs(origin.longitude - destination.longitude)
         let maxDiff = max(latDiff, lonDiff)
 
-        let distance = max(maxDiff * 180000, 400000)
+        // Increase distance slightly to compensate for pitched view
+        let distance = max(maxDiff * 200000, 500000)
+
+        // Calculate heading from origin to destination for camera orientation
+        let deltaLon = destination.longitude - origin.longitude
+        let deltaLat = destination.latitude - origin.latitude
+        let cameraHeading = atan2(deltaLon, deltaLat) * 180 / .pi
 
         cameraPosition = .camera(
             MapCamera(
                 centerCoordinate: CLLocationCoordinate2D(latitude: centerLat, longitude: centerLon),
                 distance: distance,
-                heading: 0,
-                pitch: 0
+                heading: cameraHeading,
+                pitch: 50  // Tilted view like flight tracker - looking across the map
             )
         )
     }
