@@ -16,9 +16,11 @@ struct RideModeView: View {
     @State private var currentPosition: CLLocationCoordinate2D?
     @State private var cameraPosition: MapCameraPosition = .automatic
     @State private var trainHeading: Double = 0
+    @State private var mapCameraHeading: Double = 0  // Store camera heading for train orientation
     @State private var isSoundEnabled = true
     @State private var displayLink: CADisplayLink?
     @State private var animatedProgress: Double = 0
+    @State private var lastUpdateTime: CFTimeInterval = 0
 
     var body: some View {
         if let journey = appState.activeJourney {
@@ -77,9 +79,13 @@ struct RideModeView: View {
     // MARK: - Display Link for 60fps Updates
 
     private func startDisplayLink() {
+        lastUpdateTime = CACurrentMediaTime()
+        animatedProgress = 0
+
         let link = CADisplayLink(target: DisplayLinkTarget { [self] in
             self.updateFrame()
         }, selector: #selector(DisplayLinkTarget.update))
+        link.preferredFrameRateRange = CAFrameRateRange(minimum: 60, maximum: 120, preferred: 60)
         link.add(to: .main, forMode: .common)
         displayLink = link
     }
@@ -90,11 +96,20 @@ struct RideModeView: View {
     }
 
     private func updateFrame() {
-        let targetProgress = appState.timerService.progress
+        // Only update when running
+        guard appState.timerService.state == .running else { return }
 
-        // Smooth exponential interpolation for fluid movement
-        let smoothingSpeed = 0.08
-        animatedProgress += (targetProgress - animatedProgress) * smoothingSpeed
+        let currentTime = CACurrentMediaTime()
+        let deltaTime = currentTime - lastUpdateTime
+        lastUpdateTime = currentTime
+
+        // Calculate speed based on journey duration for smooth constant movement
+        guard let journey = appState.activeJourney else { return }
+        let totalDuration = Double(journey.scheduledDuration)
+
+        // Linear progress increment for constant speed
+        let progressIncrement = deltaTime / totalDuration
+        animatedProgress += progressIncrement
 
         // Clamp to prevent overshooting
         animatedProgress = min(max(animatedProgress, 0), 1)
@@ -130,10 +145,10 @@ struct RideModeView: View {
                     .stroke(Color(hex: "E84855").opacity(0.6), lineWidth: 2)
             }
 
-            // Train marker (moves along the route)
+            // 3-car train marker (moves along the route)
             if let position = currentPosition {
-                Annotation("", coordinate: position) {
-                    ModernTrainMapIcon(heading: trainHeading)
+                Annotation("", coordinate: position, anchor: .center) {
+                    ThreeCarTrainIcon(heading: trainHeading, cameraHeading: mapCameraHeading)
                 }
             }
         }
@@ -452,6 +467,9 @@ struct RideModeView: View {
         let deltaLat = destination.latitude - origin.latitude
         let cameraHeading = atan2(deltaLon, deltaLat) * 180 / .pi
 
+        // Store camera heading for train orientation correction
+        mapCameraHeading = cameraHeading
+
         cameraPosition = .camera(
             MapCamera(
                 centerCoordinate: CLLocationCoordinate2D(latitude: centerLat, longitude: centerLon),
@@ -477,9 +495,17 @@ struct RideModeView: View {
         let interpolatedLon = lowerCoord.longitude + (upperCoord.longitude - lowerCoord.longitude) * fraction
         let newPosition = CLLocationCoordinate2D(latitude: interpolatedLat, longitude: interpolatedLon)
 
-        let lookAheadIndex = min(upperIndex + 2, railPath.count - 1)
+        // Use more look-ahead points for smoother heading calculation
+        let lookAheadIndex = min(upperIndex + 5, railPath.count - 1)
         let lookAheadCoord = railPath[lookAheadIndex]
-        trainHeading = calculateHeading(from: newPosition, to: lookAheadCoord)
+        let newHeading = calculateHeading(from: newPosition, to: lookAheadCoord)
+
+        // Smooth heading transitions to prevent jittery rotation
+        let headingDiff = newHeading - trainHeading
+        var normalizedDiff = headingDiff
+        if normalizedDiff > 180 { normalizedDiff -= 360 }
+        if normalizedDiff < -180 { normalizedDiff += 360 }
+        trainHeading += normalizedDiff * 0.15
 
         currentPosition = newPosition
     }
@@ -506,268 +532,350 @@ private class DisplayLinkTarget {
     }
 }
 
-// MARK: - Modern 3D Train Map Icon (CR400AF Fuxing Style)
+// MARK: - 3-Car Train Icon (Front Locomotive + 2 Passenger Cars)
+
+struct ThreeCarTrainIcon: View {
+    let heading: Double
+    let cameraHeading: Double
+
+    // Calculate visual heading (relative to camera orientation)
+    private var visualHeading: Double {
+        heading - cameraHeading
+    }
+
+    private let carWidth: CGFloat = 14
+    private let locomotiveLength: CGFloat = 28
+    private let passengerCarLength: CGFloat = 22
+    private let carGap: CGFloat = 2
+
+    var body: some View {
+        ZStack {
+            // Ground shadow
+            Capsule()
+                .fill(Color.black.opacity(0.3))
+                .frame(width: carWidth + 4, height: locomotiveLength + (passengerCarLength * 2) + (carGap * 2) + 8)
+                .offset(x: 2, y: 3)
+                .blur(radius: 4)
+
+            // Train cars (front to back: locomotive, car 1, car 2)
+            VStack(spacing: carGap) {
+                // Front Locomotive (with aerodynamic nose)
+                LocomotiveCar()
+                    .frame(width: carWidth, height: locomotiveLength)
+
+                // Passenger Car 1
+                PassengerCar()
+                    .frame(width: carWidth, height: passengerCarLength)
+
+                // Passenger Car 2 (rear)
+                PassengerCar()
+                    .frame(width: carWidth, height: passengerCarLength)
+            }
+            .shadow(color: .black.opacity(0.25), radius: 2, x: 1, y: 1)
+        }
+        .rotationEffect(.degrees(visualHeading))
+    }
+}
+
+// MARK: - Locomotive Car (Front with aerodynamic nose)
+
+struct LocomotiveCar: View {
+    var body: some View {
+        ZStack {
+            // Main body
+            LocomotiveShape()
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color(white: 0.96),
+                            Color(white: 0.88),
+                            Color(white: 0.78),
+                            Color(white: 0.88),
+                            Color(white: 0.96)
+                        ],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+
+            // Red accent stripe
+            LocomotiveStripe()
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color(red: 0.85, green: 0.15, blue: 0.1),
+                            Color(red: 0.95, green: 0.35, blue: 0.15)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+
+            // Windshield
+            LocomotiveWindshield()
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color(white: 0.15),
+                            Color(white: 0.3),
+                            Color(white: 0.2)
+                        ],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+
+            // Top highlight
+            LocomotiveShape()
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(0.5),
+                            Color.white.opacity(0.0)
+                        ],
+                        startPoint: .top,
+                        endPoint: .center
+                    )
+                )
+
+            // Outline
+            LocomotiveShape()
+                .stroke(Color(white: 0.55), lineWidth: 0.5)
+        }
+    }
+}
+
+// MARK: - Passenger Car
+
+struct PassengerCar: View {
+    var body: some View {
+        ZStack {
+            // Main body
+            RoundedRectangle(cornerRadius: 3)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color(white: 0.96),
+                            Color(white: 0.88),
+                            Color(white: 0.78),
+                            Color(white: 0.88),
+                            Color(white: 0.96)
+                        ],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+
+            // Red stripe along the side
+            PassengerCarStripe()
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color(red: 0.85, green: 0.15, blue: 0.1),
+                            Color(red: 0.95, green: 0.35, blue: 0.15)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+
+            // Windows (row of small rectangles)
+            PassengerCarWindows()
+                .fill(Color(white: 0.25))
+
+            // Top highlight
+            RoundedRectangle(cornerRadius: 3)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(0.4),
+                            Color.white.opacity(0.0)
+                        ],
+                        startPoint: .top,
+                        endPoint: .center
+                    )
+                )
+
+            // Outline
+            RoundedRectangle(cornerRadius: 3)
+                .stroke(Color(white: 0.55), lineWidth: 0.5)
+        }
+    }
+}
+
+// MARK: - Locomotive Shape
+
+struct LocomotiveShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let w = rect.width
+        let h = rect.height
+
+        // Aerodynamic bullet nose pointing UP
+        path.move(to: CGPoint(x: w * 0.5, y: 0))
+
+        // Right nose curve
+        path.addCurve(
+            to: CGPoint(x: w * 0.9, y: h * 0.25),
+            control1: CGPoint(x: w * 0.52, y: h * 0.03),
+            control2: CGPoint(x: w * 0.75, y: h * 0.12)
+        )
+
+        // Right body
+        path.addLine(to: CGPoint(x: w * 0.9, y: h * 0.92))
+
+        // Right rear corner
+        path.addQuadCurve(
+            to: CGPoint(x: w * 0.75, y: h),
+            control: CGPoint(x: w * 0.9, y: h)
+        )
+
+        // Bottom
+        path.addLine(to: CGPoint(x: w * 0.25, y: h))
+
+        // Left rear corner
+        path.addQuadCurve(
+            to: CGPoint(x: w * 0.1, y: h * 0.92),
+            control: CGPoint(x: w * 0.1, y: h)
+        )
+
+        // Left body
+        path.addLine(to: CGPoint(x: w * 0.1, y: h * 0.25))
+
+        // Left nose curve
+        path.addCurve(
+            to: CGPoint(x: w * 0.5, y: 0),
+            control1: CGPoint(x: w * 0.25, y: h * 0.12),
+            control2: CGPoint(x: w * 0.48, y: h * 0.03)
+        )
+
+        path.closeSubpath()
+        return path
+    }
+}
+
+// MARK: - Locomotive Stripe
+
+struct LocomotiveStripe: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let w = rect.width
+        let h = rect.height
+
+        // Right stripe
+        path.move(to: CGPoint(x: w * 0.65, y: h * 0.12))
+        path.addCurve(
+            to: CGPoint(x: w * 0.88, y: h * 0.3),
+            control1: CGPoint(x: w * 0.75, y: h * 0.15),
+            control2: CGPoint(x: w * 0.85, y: h * 0.22)
+        )
+        path.addLine(to: CGPoint(x: w * 0.88, y: h * 0.5))
+        path.addLine(to: CGPoint(x: w * 0.55, y: h * 0.2))
+        path.closeSubpath()
+
+        // Left stripe
+        path.move(to: CGPoint(x: w * 0.35, y: h * 0.12))
+        path.addCurve(
+            to: CGPoint(x: w * 0.12, y: h * 0.3),
+            control1: CGPoint(x: w * 0.25, y: h * 0.15),
+            control2: CGPoint(x: w * 0.15, y: h * 0.22)
+        )
+        path.addLine(to: CGPoint(x: w * 0.12, y: h * 0.5))
+        path.addLine(to: CGPoint(x: w * 0.45, y: h * 0.2))
+        path.closeSubpath()
+
+        return path
+    }
+}
+
+// MARK: - Locomotive Windshield
+
+struct LocomotiveWindshield: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let w = rect.width
+        let h = rect.height
+
+        path.move(to: CGPoint(x: w * 0.5, y: h * 0.02))
+        path.addCurve(
+            to: CGPoint(x: w * 0.62, y: h * 0.12),
+            control1: CGPoint(x: w * 0.54, y: h * 0.04),
+            control2: CGPoint(x: w * 0.58, y: h * 0.08)
+        )
+        path.addLine(to: CGPoint(x: w * 0.58, y: h * 0.18))
+        path.addLine(to: CGPoint(x: w * 0.42, y: h * 0.18))
+        path.addLine(to: CGPoint(x: w * 0.38, y: h * 0.12))
+        path.addCurve(
+            to: CGPoint(x: w * 0.5, y: h * 0.02),
+            control1: CGPoint(x: w * 0.42, y: h * 0.08),
+            control2: CGPoint(x: w * 0.46, y: h * 0.04)
+        )
+        path.closeSubpath()
+
+        return path
+    }
+}
+
+// MARK: - Passenger Car Stripe
+
+struct PassengerCarStripe: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let w = rect.width
+        let h = rect.height
+
+        // Right stripe
+        path.addRect(CGRect(x: w * 0.82, y: h * 0.15, width: w * 0.08, height: h * 0.7))
+
+        // Left stripe
+        path.addRect(CGRect(x: w * 0.1, y: h * 0.15, width: w * 0.08, height: h * 0.7))
+
+        return path
+    }
+}
+
+// MARK: - Passenger Car Windows
+
+struct PassengerCarWindows: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let w = rect.width
+        let h = rect.height
+
+        // Small windows along the car
+        let windowWidth = w * 0.15
+        let windowHeight = h * 0.12
+        let windowY = h * 0.35
+
+        // Window positions
+        let positions: [CGFloat] = [0.2, 0.5, 0.8]
+        for pos in positions {
+            let centerX = w * pos
+            path.addRoundedRect(
+                in: CGRect(
+                    x: centerX - windowWidth / 2,
+                    y: windowY,
+                    width: windowWidth,
+                    height: windowHeight
+                ),
+                cornerSize: CGSize(width: 1, height: 1)
+            )
+        }
+
+        return path
+    }
+}
+
+// MARK: - Legacy compatibility
 
 struct ModernTrainMapIcon: View {
     let heading: Double
 
     var body: some View {
-        ZStack {
-            // Ground shadow (elongated ellipse)
-            Ellipse()
-                .fill(Color.black.opacity(0.35))
-                .frame(width: 24, height: 50)
-                .offset(x: 3, y: 4)
-                .blur(radius: 4)
-
-            // Main train body with 3D effect
-            ZStack {
-                // Base body shape - silver/white with 3D gradient
-                BulletTrainBodyShape()
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                Color(white: 0.95),
-                                Color(white: 0.85),
-                                Color(white: 0.75),
-                                Color(white: 0.85),
-                                Color(white: 0.95)
-                            ],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                    )
-                    .frame(width: 18, height: 48)
-
-                // Red/orange accent stripe (swooping design)
-                BulletTrainAccentStripe()
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                Color(red: 0.9, green: 0.25, blue: 0.15),
-                                Color(red: 0.95, green: 0.4, blue: 0.2)
-                            ],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                    )
-                    .frame(width: 18, height: 48)
-
-                // Windshield/cockpit area (dark tinted)
-                BulletTrainWindshield()
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                Color(white: 0.2),
-                                Color(white: 0.35),
-                                Color(white: 0.25)
-                            ],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                    )
-                    .frame(width: 18, height: 48)
-
-                // Top highlight for 3D roundness
-                BulletTrainHighlight()
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                Color.white.opacity(0.6),
-                                Color.white.opacity(0.0)
-                            ],
-                            startPoint: .top,
-                            endPoint: .center
-                        )
-                    )
-                    .frame(width: 18, height: 48)
-
-                // Edge outline
-                BulletTrainBodyShape()
-                    .stroke(Color(white: 0.5), lineWidth: 0.5)
-                    .frame(width: 18, height: 48)
-            }
-            .shadow(color: .black.opacity(0.3), radius: 2, x: 1, y: 2)
-        }
-        .rotationEffect(.degrees(heading))
+        ThreeCarTrainIcon(heading: heading, cameraHeading: 0)
     }
 }
 
-// MARK: - Bullet Train Body Shape (Elongated aerodynamic nose)
-
-struct BulletTrainBodyShape: Shape {
-    func path(in rect: CGRect) -> Path {
-        var path = Path()
-        let w = rect.width
-        let h = rect.height
-
-        // Ultra-sleek bullet nose pointing UP (like CR400AF Fuxing)
-        // Very long, tapered nose section
-
-        // Nose tip (sharp point)
-        path.move(to: CGPoint(x: w * 0.5, y: 0))
-
-        // Right nose curve - very elongated and aerodynamic
-        path.addCurve(
-            to: CGPoint(x: w * 0.92, y: h * 0.28),
-            control1: CGPoint(x: w * 0.52, y: h * 0.05),
-            control2: CGPoint(x: w * 0.75, y: h * 0.15)
-        )
-
-        // Right body - slight taper toward rear
-        path.addCurve(
-            to: CGPoint(x: w * 0.88, y: h * 0.7),
-            control1: CGPoint(x: w * 0.95, y: h * 0.4),
-            control2: CGPoint(x: w * 0.9, y: h * 0.55)
-        )
-
-        // Right rear curve
-        path.addCurve(
-            to: CGPoint(x: w * 0.5, y: h),
-            control1: CGPoint(x: w * 0.85, y: h * 0.88),
-            control2: CGPoint(x: w * 0.68, y: h * 0.98)
-        )
-
-        // Left rear curve
-        path.addCurve(
-            to: CGPoint(x: w * 0.12, y: h * 0.7),
-            control1: CGPoint(x: w * 0.32, y: h * 0.98),
-            control2: CGPoint(x: w * 0.15, y: h * 0.88)
-        )
-
-        // Left body
-        path.addCurve(
-            to: CGPoint(x: w * 0.08, y: h * 0.28),
-            control1: CGPoint(x: w * 0.1, y: h * 0.55),
-            control2: CGPoint(x: w * 0.05, y: h * 0.4)
-        )
-
-        // Left nose curve
-        path.addCurve(
-            to: CGPoint(x: w * 0.5, y: 0),
-            control1: CGPoint(x: w * 0.25, y: h * 0.15),
-            control2: CGPoint(x: w * 0.48, y: h * 0.05)
-        )
-
-        path.closeSubpath()
-        return path
-    }
-}
-
-// MARK: - Accent Stripe (Red swooping design like Fuxing)
-
-struct BulletTrainAccentStripe: Shape {
-    func path(in rect: CGRect) -> Path {
-        var path = Path()
-        let w = rect.width
-        let h = rect.height
-
-        // Right side swooping stripe
-        path.move(to: CGPoint(x: w * 0.7, y: h * 0.18))
-        path.addCurve(
-            to: CGPoint(x: w * 0.88, y: h * 0.35),
-            control1: CGPoint(x: w * 0.78, y: h * 0.22),
-            control2: CGPoint(x: w * 0.85, y: h * 0.28)
-        )
-        path.addLine(to: CGPoint(x: w * 0.88, y: h * 0.55))
-        path.addCurve(
-            to: CGPoint(x: w * 0.6, y: h * 0.25),
-            control1: CGPoint(x: w * 0.8, y: h * 0.4),
-            control2: CGPoint(x: w * 0.7, y: h * 0.3)
-        )
-        path.closeSubpath()
-
-        // Left side swooping stripe (mirror)
-        path.move(to: CGPoint(x: w * 0.3, y: h * 0.18))
-        path.addCurve(
-            to: CGPoint(x: w * 0.12, y: h * 0.35),
-            control1: CGPoint(x: w * 0.22, y: h * 0.22),
-            control2: CGPoint(x: w * 0.15, y: h * 0.28)
-        )
-        path.addLine(to: CGPoint(x: w * 0.12, y: h * 0.55))
-        path.addCurve(
-            to: CGPoint(x: w * 0.4, y: h * 0.25),
-            control1: CGPoint(x: w * 0.2, y: h * 0.4),
-            control2: CGPoint(x: w * 0.3, y: h * 0.3)
-        )
-        path.closeSubpath()
-
-        return path
-    }
-}
-
-// MARK: - Windshield Area
-
-struct BulletTrainWindshield: Shape {
-    func path(in rect: CGRect) -> Path {
-        var path = Path()
-        let w = rect.width
-        let h = rect.height
-
-        // Sleek windshield at the nose
-        path.move(to: CGPoint(x: w * 0.5, y: h * 0.02))
-        path.addCurve(
-            to: CGPoint(x: w * 0.65, y: h * 0.15),
-            control1: CGPoint(x: w * 0.55, y: h * 0.05),
-            control2: CGPoint(x: w * 0.6, y: h * 0.1)
-        )
-        path.addCurve(
-            to: CGPoint(x: w * 0.5, y: h * 0.2),
-            control1: CGPoint(x: w * 0.6, y: h * 0.18),
-            control2: CGPoint(x: w * 0.55, y: h * 0.2)
-        )
-        path.addCurve(
-            to: CGPoint(x: w * 0.35, y: h * 0.15),
-            control1: CGPoint(x: w * 0.45, y: h * 0.2),
-            control2: CGPoint(x: w * 0.4, y: h * 0.18)
-        )
-        path.addCurve(
-            to: CGPoint(x: w * 0.5, y: h * 0.02),
-            control1: CGPoint(x: w * 0.4, y: h * 0.1),
-            control2: CGPoint(x: w * 0.45, y: h * 0.05)
-        )
-        path.closeSubpath()
-
-        return path
-    }
-}
-
-// MARK: - Top Highlight for 3D Effect
-
-struct BulletTrainHighlight: Shape {
-    func path(in rect: CGRect) -> Path {
-        var path = Path()
-        let w = rect.width
-        let h = rect.height
-
-        // Center highlight strip running along the top
-        path.move(to: CGPoint(x: w * 0.5, y: h * 0.01))
-        path.addCurve(
-            to: CGPoint(x: w * 0.6, y: h * 0.3),
-            control1: CGPoint(x: w * 0.52, y: h * 0.1),
-            control2: CGPoint(x: w * 0.58, y: h * 0.2)
-        )
-        path.addLine(to: CGPoint(x: w * 0.55, y: h * 0.6))
-        path.addLine(to: CGPoint(x: w * 0.45, y: h * 0.6))
-        path.addLine(to: CGPoint(x: w * 0.4, y: h * 0.3))
-        path.addCurve(
-            to: CGPoint(x: w * 0.5, y: h * 0.01),
-            control1: CGPoint(x: w * 0.42, y: h * 0.2),
-            control2: CGPoint(x: w * 0.48, y: h * 0.1)
-        )
-        path.closeSubpath()
-
-        return path
-    }
-}
-
-// MARK: - Legacy Shape (kept for compatibility)
-
-struct RealisticBulletTrainShape: Shape {
-    func path(in rect: CGRect) -> Path {
-        BulletTrainBodyShape().path(in: rect)
-    }
-}
 
 // MARK: - Preview
 
