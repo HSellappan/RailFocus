@@ -506,94 +506,266 @@ private class DisplayLinkTarget {
     }
 }
 
-// MARK: - Modern Train Map Icon (Realistic Bullet Train)
+// MARK: - Modern 3D Train Map Icon (CR400AF Fuxing Style)
 
 struct ModernTrainMapIcon: View {
     let heading: Double
 
     var body: some View {
         ZStack {
-            // Shadow/glow
+            // Ground shadow (elongated ellipse)
             Ellipse()
-                .fill(Color.black.opacity(0.3))
-                .frame(width: 30, height: 15)
-                .offset(y: 3)
-                .blur(radius: 3)
+                .fill(Color.black.opacity(0.35))
+                .frame(width: 24, height: 50)
+                .offset(x: 3, y: 4)
+                .blur(radius: 4)
 
-            // Train body
-            RealisticBulletTrainShape()
-                .fill(
-                    LinearGradient(
-                        colors: [Color.white, Color(white: 0.9)],
-                        startPoint: .leading,
-                        endPoint: .trailing
+            // Main train body with 3D effect
+            ZStack {
+                // Base body shape - silver/white with 3D gradient
+                BulletTrainBodyShape()
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color(white: 0.95),
+                                Color(white: 0.85),
+                                Color(white: 0.75),
+                                Color(white: 0.85),
+                                Color(white: 0.95)
+                            ],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
                     )
-                )
-                .frame(width: 14, height: 32)
-                .overlay(
-                    // Windshield accent
-                    RealisticBulletTrainShape()
-                        .stroke(Color(white: 0.7), lineWidth: 0.5)
-                        .frame(width: 14, height: 32)
-                )
-                .shadow(color: .black.opacity(0.4), radius: 2, x: 0, y: 1)
+                    .frame(width: 18, height: 48)
+
+                // Red/orange accent stripe (swooping design)
+                BulletTrainAccentStripe()
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color(red: 0.9, green: 0.25, blue: 0.15),
+                                Color(red: 0.95, green: 0.4, blue: 0.2)
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+                    .frame(width: 18, height: 48)
+
+                // Windshield/cockpit area (dark tinted)
+                BulletTrainWindshield()
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color(white: 0.2),
+                                Color(white: 0.35),
+                                Color(white: 0.25)
+                            ],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .frame(width: 18, height: 48)
+
+                // Top highlight for 3D roundness
+                BulletTrainHighlight()
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(0.6),
+                                Color.white.opacity(0.0)
+                            ],
+                            startPoint: .top,
+                            endPoint: .center
+                        )
+                    )
+                    .frame(width: 18, height: 48)
+
+                // Edge outline
+                BulletTrainBodyShape()
+                    .stroke(Color(white: 0.5), lineWidth: 0.5)
+                    .frame(width: 18, height: 48)
+            }
+            .shadow(color: .black.opacity(0.3), radius: 2, x: 1, y: 2)
         }
         .rotationEffect(.degrees(heading))
     }
 }
 
-// MARK: - Realistic Bullet Train Shape
+// MARK: - Bullet Train Body Shape (Elongated aerodynamic nose)
 
-struct RealisticBulletTrainShape: Shape {
+struct BulletTrainBodyShape: Shape {
     func path(in rect: CGRect) -> Path {
         var path = Path()
-
         let w = rect.width
         let h = rect.height
 
-        // Sleek bullet train from above - nose points UP
-        // Very streamlined shape like Shinkansen/TGV
+        // Ultra-sleek bullet nose pointing UP (like CR400AF Fuxing)
+        // Very long, tapered nose section
 
-        // Nose tip
+        // Nose tip (sharp point)
         path.move(to: CGPoint(x: w * 0.5, y: 0))
 
-        // Right nose curve (very aerodynamic)
+        // Right nose curve - very elongated and aerodynamic
         path.addCurve(
-            to: CGPoint(x: w, y: h * 0.2),
-            control1: CGPoint(x: w * 0.55, y: h * 0.02),
-            control2: CGPoint(x: w * 0.9, y: h * 0.1)
+            to: CGPoint(x: w * 0.92, y: h * 0.28),
+            control1: CGPoint(x: w * 0.52, y: h * 0.05),
+            control2: CGPoint(x: w * 0.75, y: h * 0.15)
         )
 
-        // Right body (slight taper)
-        path.addLine(to: CGPoint(x: w * 0.95, y: h * 0.75))
+        // Right body - slight taper toward rear
+        path.addCurve(
+            to: CGPoint(x: w * 0.88, y: h * 0.7),
+            control1: CGPoint(x: w * 0.95, y: h * 0.4),
+            control2: CGPoint(x: w * 0.9, y: h * 0.55)
+        )
 
         // Right rear curve
         path.addCurve(
             to: CGPoint(x: w * 0.5, y: h),
-            control1: CGPoint(x: w * 0.95, y: h * 0.9),
-            control2: CGPoint(x: w * 0.7, y: h)
+            control1: CGPoint(x: w * 0.85, y: h * 0.88),
+            control2: CGPoint(x: w * 0.68, y: h * 0.98)
         )
 
         // Left rear curve
         path.addCurve(
-            to: CGPoint(x: w * 0.05, y: h * 0.75),
-            control1: CGPoint(x: w * 0.3, y: h),
-            control2: CGPoint(x: w * 0.05, y: h * 0.9)
+            to: CGPoint(x: w * 0.12, y: h * 0.7),
+            control1: CGPoint(x: w * 0.32, y: h * 0.98),
+            control2: CGPoint(x: w * 0.15, y: h * 0.88)
         )
 
         // Left body
-        path.addLine(to: CGPoint(x: 0, y: h * 0.2))
+        path.addCurve(
+            to: CGPoint(x: w * 0.08, y: h * 0.28),
+            control1: CGPoint(x: w * 0.1, y: h * 0.55),
+            control2: CGPoint(x: w * 0.05, y: h * 0.4)
+        )
 
         // Left nose curve
         path.addCurve(
             to: CGPoint(x: w * 0.5, y: 0),
-            control1: CGPoint(x: w * 0.1, y: h * 0.1),
-            control2: CGPoint(x: w * 0.45, y: h * 0.02)
+            control1: CGPoint(x: w * 0.25, y: h * 0.15),
+            control2: CGPoint(x: w * 0.48, y: h * 0.05)
         )
 
         path.closeSubpath()
+        return path
+    }
+}
+
+// MARK: - Accent Stripe (Red swooping design like Fuxing)
+
+struct BulletTrainAccentStripe: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let w = rect.width
+        let h = rect.height
+
+        // Right side swooping stripe
+        path.move(to: CGPoint(x: w * 0.7, y: h * 0.18))
+        path.addCurve(
+            to: CGPoint(x: w * 0.88, y: h * 0.35),
+            control1: CGPoint(x: w * 0.78, y: h * 0.22),
+            control2: CGPoint(x: w * 0.85, y: h * 0.28)
+        )
+        path.addLine(to: CGPoint(x: w * 0.88, y: h * 0.55))
+        path.addCurve(
+            to: CGPoint(x: w * 0.6, y: h * 0.25),
+            control1: CGPoint(x: w * 0.8, y: h * 0.4),
+            control2: CGPoint(x: w * 0.7, y: h * 0.3)
+        )
+        path.closeSubpath()
+
+        // Left side swooping stripe (mirror)
+        path.move(to: CGPoint(x: w * 0.3, y: h * 0.18))
+        path.addCurve(
+            to: CGPoint(x: w * 0.12, y: h * 0.35),
+            control1: CGPoint(x: w * 0.22, y: h * 0.22),
+            control2: CGPoint(x: w * 0.15, y: h * 0.28)
+        )
+        path.addLine(to: CGPoint(x: w * 0.12, y: h * 0.55))
+        path.addCurve(
+            to: CGPoint(x: w * 0.4, y: h * 0.25),
+            control1: CGPoint(x: w * 0.2, y: h * 0.4),
+            control2: CGPoint(x: w * 0.3, y: h * 0.3)
+        )
+        path.closeSubpath()
 
         return path
+    }
+}
+
+// MARK: - Windshield Area
+
+struct BulletTrainWindshield: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let w = rect.width
+        let h = rect.height
+
+        // Sleek windshield at the nose
+        path.move(to: CGPoint(x: w * 0.5, y: h * 0.02))
+        path.addCurve(
+            to: CGPoint(x: w * 0.65, y: h * 0.15),
+            control1: CGPoint(x: w * 0.55, y: h * 0.05),
+            control2: CGPoint(x: w * 0.6, y: h * 0.1)
+        )
+        path.addCurve(
+            to: CGPoint(x: w * 0.5, y: h * 0.2),
+            control1: CGPoint(x: w * 0.6, y: h * 0.18),
+            control2: CGPoint(x: w * 0.55, y: h * 0.2)
+        )
+        path.addCurve(
+            to: CGPoint(x: w * 0.35, y: h * 0.15),
+            control1: CGPoint(x: w * 0.45, y: h * 0.2),
+            control2: CGPoint(x: w * 0.4, y: h * 0.18)
+        )
+        path.addCurve(
+            to: CGPoint(x: w * 0.5, y: h * 0.02),
+            control1: CGPoint(x: w * 0.4, y: h * 0.1),
+            control2: CGPoint(x: w * 0.45, y: h * 0.05)
+        )
+        path.closeSubpath()
+
+        return path
+    }
+}
+
+// MARK: - Top Highlight for 3D Effect
+
+struct BulletTrainHighlight: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let w = rect.width
+        let h = rect.height
+
+        // Center highlight strip running along the top
+        path.move(to: CGPoint(x: w * 0.5, y: h * 0.01))
+        path.addCurve(
+            to: CGPoint(x: w * 0.6, y: h * 0.3),
+            control1: CGPoint(x: w * 0.52, y: h * 0.1),
+            control2: CGPoint(x: w * 0.58, y: h * 0.2)
+        )
+        path.addLine(to: CGPoint(x: w * 0.55, y: h * 0.6))
+        path.addLine(to: CGPoint(x: w * 0.45, y: h * 0.6))
+        path.addLine(to: CGPoint(x: w * 0.4, y: h * 0.3))
+        path.addCurve(
+            to: CGPoint(x: w * 0.5, y: h * 0.01),
+            control1: CGPoint(x: w * 0.42, y: h * 0.2),
+            control2: CGPoint(x: w * 0.48, y: h * 0.1)
+        )
+        path.closeSubpath()
+
+        return path
+    }
+}
+
+// MARK: - Legacy Shape (kept for compatibility)
+
+struct RealisticBulletTrainShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        BulletTrainBodyShape().path(in: rect)
     }
 }
 
